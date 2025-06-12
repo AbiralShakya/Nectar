@@ -26,3 +26,159 @@ Runtime awareness:
 
 Kernel aware MoE design: 
     write custom CUDA kernels to fuse operations across experts
+    building routing operators that align expert choices to contiguous memory blocks for coalesced reads and lower DRAM pressure 
+
+Model + learning level enhancements
+    adaptive routing, train cost sensitive router to prenalize high energy experts, adaptively prune experts based on thermal state of power headroom
+
+
+
+# Implementation Approach: Energy-Aware TTT for MoE
+
+## Phase 1: Foundation (Weeks 1-3)
+
+### 1.1 Baseline MoE Implementation
+Start with a minimal but functional MoE transformer:
+- Use existing libraries (FairScale or custom) for basic MoE routing
+- Implement top-k expert selection with load balancing
+- Add profiling hooks from day 1 (timing, memory, FLOPs)
+- Validate on a simple task (language modeling on small dataset)
+
+### 1.2 Energy Profiling Infrastructure
+- **Hardware profiling**: Use `pynvml` for GPU power monitoring
+- **Software profiling**: Track per-expert computation costs
+- **Simulation mode**: For development without actual power measurement
+- Build cost lookup tables for different expert configurations
+
+### 1.3 Modular TTT Components
+- Implement TENT-style entropy minimization
+- Add selective parameter updates (router weights, BN stats)
+- Create adapter layers for expert-specific fine-tuning
+- Ensure all TTT components can be toggled on/off
+
+## Phase 2: Core Integration (Weeks 4-6)
+
+### 2.1 Energy-Aware Loss Function
+```python
+L_total = L_task + λ_entropy * L_entropy + λ_energy * E_power
+```
+- Implement energy estimation based on expert selection
+- Add thermal throttling simulation
+- Create adaptive λ scheduling based on power budget
+
+### 2.2 Dynamic Routing Adaptation
+- Modify router to accept TTT gradients
+- Implement expert pruning under power constraints
+- Add input-complexity-aware routing decisions
+- Create routing visualization tools
+
+### 2.3 Hardware Feedback Loop
+- Real-time power monitoring integration
+- Thermal threshold triggers for TTT activation
+- Memory pressure detection and response
+- Graceful degradation strategies
+
+## Phase 3: Advanced Features (Weeks 7-9)
+
+### 3.1 Multi-Modal Adaptation
+- Input-aware TTT (easy vs hard inputs)
+- Domain-drift detection and response
+- Batch-level vs token-level adaptation
+- Adaptive TTT frequency based on input characteristics
+
+### 3.2 Interpretability & Analysis
+- Expert activation heatmaps pre/post TTT
+- Energy-accuracy Pareto frontier analysis
+- Routing decision explanations
+- TTT convergence analysis
+
+### 3.3 Robustness Testing
+- Domain shift evaluation (clean → noisy data)
+- Hardware constraint stress testing
+- Long-sequence stability analysis
+- Failure mode identification
+
+## Phase 4: Evaluation & Optimization (Weeks 10-12)
+
+### 4.1 Comprehensive Benchmarking
+- Energy-delay product (EDP) measurements
+- Throughput vs accuracy trade-offs
+- Comparison with static pruning/quantization
+- Real hardware validation on edge devices
+
+### 4.2 Ablation Studies
+- TTT vs no TTT baseline
+- Energy constraint vs accuracy constraint
+- Different λ values and scheduling strategies
+- Expert selection strategies comparison
+
+### 4.3 Paper Preparation
+- Results visualization and analysis
+- Method comparison with related work
+- Reproducibility package preparation
+- Submission to target venue
+
+## Technical Implementation Strategy
+
+### Start Simple, Scale Up
+1. **MVP**: Basic MoE + simple energy profiling + TENT TTT
+2. **Iterate**: Add one component at a time with proper testing
+3. **Validate**: Each component should improve a specific metric
+4. **Scale**: Move from toy problems to realistic workloads
+
+### Key Design Decisions
+
+#### Energy Profiling Approach
+- **Development**: Use FLOPs/memory as energy proxy
+- **Validation**: Actual power measurement on target hardware
+- **Deployment**: Hybrid approach with runtime calibration
+
+#### TTT Trigger Strategy
+- **Threshold-based**: Activate TTT when power/temperature exceeds limits
+- **Predictive**: Use input complexity to pre-emptively adapt
+- **Adaptive**: Learn when TTT is most beneficial
+
+#### Parameter Selection for TTT
+- **Conservative**: Only router weights and BN stats
+- **Aggressive**: Include expert-specific adapters
+- **Hybrid**: Gradual expansion based on power budget
+
+## Risk Mitigation
+
+### Technical Risks
+- **TTT overhead**: Ensure adaptation cost < routing savings
+- **Stability**: Prevent TTT from causing oscillations
+- **Generalization**: Validate across different model sizes/tasks
+
+### Experimental Risks
+- **Hardware access**: Develop with simulation, validate on real hardware
+- **Baseline comparison**: Implement strong static baselines
+- **Reproducibility**: Comprehensive logging and seeding
+
+## Success Metrics
+
+### Technical Metrics
+- 20%+ energy reduction with <5% accuracy loss
+- TTT overhead <10% of total inference time
+- Stable performance across hardware configurations
+
+### Research Metrics
+- Novel insights about energy-accuracy trade-offs
+- Interpretable routing decisions under constraints
+- Reproducible experimental methodology
+
+## Next Steps
+
+1. **Week 1**: Set up basic MoE implementation with profiling
+2. **Week 2**: Implement TENT-style TTT integration
+3. **Week 3**: Add energy cost estimation and basic feedback loop
+4. **Week 4**: First end-to-end experiment with energy constraints
+
+The key is to maintain a tight development loop with frequent validation on small-scale experiments before scaling up to full evaluation.
+
+
+
+Modern inference workdloads, especially for sparse or modular models like MoE, must adapt not only to diverse inputs but also to fluctuating hardware conditions such as power limits, thermal throttling, and latency constraints. In this paper, 
+we propose a novel integration of test time training (TTT) with energy aware routing to form a dynamic control layer for large models. OUr method adapts model behavior to runtime energy profiles by adjusting expert activation, routing decisions, and layer sensitivity, 
+all without retraining. We show that this approach maintains high performance across domain shifted inputs while significantly reducing energy consumption udner constrained conditions. Our work bridges TTT, sparse models, and low-level profiling to define a new paradigm for 
+efficient, adaptive interference under real world systems constraints. 
