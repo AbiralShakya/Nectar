@@ -1,0 +1,28 @@
+TTT allows models to self modify based on inputdata or hardware contx, post deployment
+    hardware-aware MoE context, TTT could: 
+        fine tune expert router to minimize power draw under known budget
+        use runtime profiling to favor experts with lower compute / memory footprint
+
+        allow expert selection policies to respond to power, heat, or resource feedback, becoming a thermal aware model
+
+
+Research direction:
+    how can we adapt large scale, sparsely activated models (MoEs) to modern hardware constraints like power density, thermal limits, energy budgets, at training and inference time 
+
+        using dynamc test time adaption and kernel level optimizations
+
+
+CUDA kernel level profiling via: 
+    nvprof, nsys, nvtx, NVIDIA Nsight Compute
+    profile each MoE expert block seperately (FFN, Attention, etc)
+    collect: energy per cell, execution time, SM occupancy, power draw
+
+Chacterize each expert 
+    build power cost profile per experts
+
+Runtime awareness:
+    integrate thermal / power feedback using nvidia-smi
+    adjust routing or dropout in high power states
+
+Kernel aware MoE design: 
+    write custom CUDA kernels to fuse operations across experts
