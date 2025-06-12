@@ -1,0 +1,224 @@
+{
+    "metadata": {
+      "version": "1.0",
+      "description": "Energy cost table for MoE experts in TTT framework",
+      "last_updated": "2025-01-01T00:00:00Z",
+      "hardware_profile": {
+        "gpu_model": "RTX 4090",
+        "tdp": 450,
+        "memory": "24GB GDDR6X",
+        "compute_capability": "8.9"
+      },
+      "measurement_units": {
+        "flops": "floating point operations",
+        "energy_per_flop": "picojoules per FLOP",
+        "memory_footprint": "bytes",
+        "latency": "milliseconds",
+        "power_draw": "watts"
+      }
+    },
+    "base_costs": {
+      "linear_layer_cost_per_param": 2.5e-12,
+      "attention_head_cost_multiplier": 1.3,
+      "activation_function_cost": {
+        "relu": 1.0e-12,
+        "gelu": 2.1e-12,
+        "swish": 2.3e-12,
+        "sigmoid": 1.8e-12
+      },
+      "normalization_cost": {
+        "layer_norm": 1.5e-12,
+        "batch_norm": 1.2e-12,
+        "rms_norm": 1.1e-12
+      }
+    },
+    "expert_profiles": {
+      "expert_0": {
+        "expert_id": "expert_0",
+        "flops": 134217728,
+        "memory_footprint": 67108864,
+        "avg_latency": 2.5,
+        "energy_cost": 0.000335,
+        "activation_count": 1250,
+        "specialization": "general_language",
+        "complexity_score": 0.75,
+        "efficiency_rating": 0.82,
+        "thermal_coefficient": 1.0,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_1": {
+        "expert_id": "expert_1", 
+        "flops": 201326592,
+        "memory_footprint": 100663296,
+        "avg_latency": 3.8,
+        "energy_cost": 0.000503,
+        "activation_count": 890,
+        "specialization": "mathematics",
+        "complexity_score": 0.92,
+        "efficiency_rating": 0.78,
+        "thermal_coefficient": 1.15,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_2": {
+        "expert_id": "expert_2",
+        "flops": 167772160,
+        "memory_footprint": 83886080,
+        "avg_latency": 3.1,
+        "energy_cost": 0.000419,
+        "activation_count": 1050,
+        "specialization": "code_generation",
+        "complexity_score": 0.88,
+        "efficiency_rating": 0.80,
+        "thermal_coefficient": 1.08,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_3": {
+        "expert_id": "expert_3",
+        "flops": 117440512,
+        "memory_footprint": 58720256,
+        "avg_latency": 2.2,
+        "energy_cost": 0.000293,
+        "activation_count": 1420,
+        "specialization": "common_sense",
+        "complexity_score": 0.65,
+        "efficiency_rating": 0.85,
+        "thermal_coefficient": 0.95,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_4": {
+        "expert_id": "expert_4",
+        "flops": 184549376,
+        "memory_footprint": 92274688,
+        "avg_latency": 3.4,
+        "energy_cost": 0.000461,
+        "activation_count": 780,
+        "specialization": "scientific_reasoning",
+        "complexity_score": 0.95,
+        "efficiency_rating": 0.76,
+        "thermal_coefficient": 1.18,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_5": {
+        "expert_id": "expert_5",
+        "flops": 150994944,
+        "memory_footprint": 75497472,
+        "avg_latency": 2.8,
+        "energy_cost": 0.000377,
+        "activation_count": 1150,
+        "specialization": "creative_writing",
+        "complexity_score": 0.72,
+        "efficiency_rating": 0.81,
+        "thermal_coefficient": 1.02,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_6": {
+        "expert_id": "expert_6",
+        "flops": 100663296,
+        "memory_footprint": 50331648,
+        "avg_latency": 1.9,
+        "energy_cost": 0.000251,
+        "activation_count": 1680,
+        "specialization": "factual_recall",
+        "complexity_score": 0.58,
+        "efficiency_rating": 0.88,
+        "thermal_coefficient": 0.92,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      },
+      "expert_7": {
+        "expert_id": "expert_7",
+        "flops": 218103808,
+        "memory_footprint": 109051904,
+        "avg_latency": 4.1,
+        "energy_cost": 0.000545,
+        "activation_count": 650,
+        "specialization": "logical_reasoning",
+        "complexity_score": 0.98,
+        "efficiency_rating": 0.74,
+        "thermal_coefficient": 1.22,
+        "last_profiled": "2025-01-01T00:00:00Z"
+      }
+    },
+    "routing_costs": {
+      "router_forward_pass": {
+        "flops": 8388608,
+        "energy_cost": 2.1e-5,
+        "latency": 0.15
+      },
+      "top_k_selection": {
+        "k1_cost": 1.2e-6,
+        "k2_cost": 2.1e-6,
+        "k4_cost": 4.2e-6,
+        "k8_cost": 8.1e-6
+      },
+      "load_balancing_penalty": {
+        "computation_overhead": 0.05,
+        "communication_cost": 0.02
+      }
+    },
+    "thermal_parameters": {
+      "base_temperature": 45.0,
+      "thermal_throttle_threshold": 83.0,
+      "critical_temperature": 87.0,
+      "thermal_time_constant": 15.0,
+      "cooling_efficiency": 0.85,
+      "ambient_temperature": 25.0,
+      "thermal_resistance": 0.12
+    },
+    "energy_budgets": {
+      "low_power_mode": {
+        "max_power_watts": 200,
+        "max_energy_per_token": 0.001,
+        "preferred_experts": ["expert_6", "expert_3", "expert_0"]
+      },
+      "balanced_mode": {
+        "max_power_watts": 350,
+        "max_energy_per_token": 0.002,
+        "preferred_experts": ["expert_0", "expert_2", "expert_5", "expert_6"]
+      },
+      "performance_mode": {
+        "max_power_watts": 450,
+        "max_energy_per_token": 0.004,
+        "preferred_experts": ["expert_1", "expert_4", "expert_7"]
+      }
+    },
+    "calibration_data": {
+      "measurement_samples": 10000,
+      "confidence_interval": 0.95,
+      "measurement_error": 0.03,
+      "temperature_variance": 2.1,
+      "power_measurement_accuracy": 0.02,
+      "timing_precision": 1e-6
+    },
+    "dynamic_scaling": {
+      "temperature_scaling": {
+        "coefficients": [1.0, 0.015, -0.0002],
+        "description": "Quadratic scaling: cost = base_cost * (1 + 0.015*ΔT - 0.0002*ΔT²)"
+      },
+      "power_scaling": {
+        "coefficients": [1.0, 0.008],
+        "description": "Linear scaling: cost = base_cost * (1 + 0.008*power_ratio)"
+      },
+      "memory_pressure_scaling": {
+        "coefficients": [1.0, 0.25, 0.05],
+        "description": "Memory pressure scaling based on utilization"
+      }
+    },
+    "experimental_features": {
+      "predictive_modeling": {
+        "enabled": false,
+        "model_type": "linear_regression",
+        "features": ["temperature", "power_draw", "memory_usage", "utilization"],
+        "prediction_horizon": 5.0
+      },
+      "adaptive_throttling": {
+        "enabled": true,
+        "response_time": 0.5,
+        "aggression_factor": 0.7
+      },
+      "expert_migration": {
+        "enabled": false,
+        "threshold_temp": 80.0,
+        "migration_cost": 0.1
+      }
+    }
+  }
