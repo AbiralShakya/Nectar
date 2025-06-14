@@ -1,0 +1,71 @@
+MoE imbalance is big problem 
+    motivation of changing routing of experts
+Power/ MoE 
+    why do we need to change ?
+
+
+past 10 years scaling stopped, higher power density, seeing bigger and bigger chips, area growing fast 
+    total amount of power needed to trian these models 
+
+MoE future 
+    more sparse models
+    current sparsity is matrix level sparsity
+        expert level sparisity --> keep total amount weights same
+
+        increase # expets and keep # weights per expert less, then more accurate
+
+    deepseek 512 experts right now 
+        challenge to hardware
+            current ML hardware assumes everything is same 
+    
+    bring imbalance back to balaned GPU system
+        try to come up with new hardware
+        peak power --> few experts activated during same tiime, imbalanced
+
+    bound 1: total power consumtpion
+    bound 2: power supply, power limit model performance
+
+scaling law, bigger model size, more switching, more power
+    plot toal amount of power
+
+how much compute & memory tehse models need 
+    differnet model size, figure out compute and memory power, energy used during trainign and inference, see if linear 
+    probably is lienar or curved. curge may be more interesting. figure out GPU systems comparison. if just care about power consumption. 
+        same gpu system ? --> beacuse not everything else might be same with larger models vs smaller
+            choose GPU system for fair comparison matching, use A100 for everything, specific # based on how big the size is
+
+
+power scale esimation on public model and divide 
+
+attention part is same, just split workload, each computes it 
+    reduce scatter, put everything together
+
+    routing -> FFN -> all to all shuffle 
+
+MoE imbalance, GPU underutilized
+
+if everything balanced --> measure power of 1 GPU * # GPU
+
+goal 
+    1. power trned to model size trend
+    2. upper bound to power supply ~power wall
+
+hardware based MoE
+    if we don't change algorithm, amount of computation is same
+
+
+specfic solution: 
+    big model to tarin, compute (matrix mul, floating point calculating), inner GPU memory movement
+
+    compute, memory, communication. 3 big parts of power consumption
+    figuring out exact #s. for compute, FP calculations
+        memory: power, HVM to SM, moving back to HVM
+
+    communication: interconnects across GPU 
+
+        (inter GPU connection)
+    figure out the ratios 
+
+memory, do breakdown: small enough parts on how to reduce them 
+
+look into how deepseaek places thier experts, expert allocation strategy
