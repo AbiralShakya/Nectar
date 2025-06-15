@@ -1,0 +1,7 @@
+algorithm kernel co evolution 
+
+adversial network, one maximize, one minimize hardware power consumption
+
+establish your development enviornment (weeks 1 - 2)
+    power measurement infrastructure: set up NVML in training loops
+
