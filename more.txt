@@ -5,3 +5,10 @@ adversial network, one maximize, one minimize hardware power consumption
 establish your development enviornment (weeks 1 - 2)
     power measurement infrastructure: set up NVML in training loops
 
+To design and implement power-efficient custom GPU kernels for Mixture-of-Experts (MoE) and Test-Time Training (TTT) models by identifying and optimizing key computational bottlenecks, ultimately reducing energy consumption without sacrificing model performance.
+More specifically, you aim to:
+
+Profile existing MoE/TTT implementations at the kernel level using tools like Nsight Systems and Compute to identify high-power operations.
+Develop custom GPU kernels (e.g., fused routing + expert operations, sparse attention, quantized inference) using CUDA C++ or Triton, optimized for memory access patterns, occupancy, and arithmetic intensity.
+Evaluate system-level impact, integrating your kernels into real training/inference pipelines and measuring end-to-end power savings per token/sequence using software and optional hardware monitoring.
+Explore architectural strategies such as dynamic expert activation, fused operations, and quantization-aware inference, with a focus on deployability to low-power or edge settings.
