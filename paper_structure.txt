@@ -1,0 +1,37 @@
+1. intro
+    1. challenges in scaling ML models under power and thermal constraints
+    2. importnace of MoE and risk of thermal throttling
+    3. contribution: MoE routing conditioned on thermal feedback, energy aware training and adaptive inference
+
+2. related work 
+    1. moe architecture
+    2. efficient inference under contraints (sparse moe, ttt)
+    3. distribution shifts TTT,  batch norm vs non batch norm, (this aims to kind of generalize this for hardware efficient)
+    4. hardware aware training 
+
+ 3. methods
+    1. overview of moe and routing
+    2. thermal signal generator, defining stage, budges, priorties
+    3. adaptive routing, modifitying logits using tghermal signals
+    4. throttling mechanisms (batch size)
+    5. ttt 
+
+4. experimental setup  
+    1. gpu haradware spec
+    2. baelines: std moe vs adaptive moe 
+    3. workloaads: infernece and ttt on vision / langauge tasks 
+
+5. results
+    1. power draw and temp evolution
+    2. expert usage heatmaps (before vs after adaptive moe)
+    3. accuracy vs energy v latency trade off (important) 
+    4. effectiveness of ttt under energy budgets 
+
+
+
+Resesarch questions: 
+    1. How effectively can real-time GPU profiling and thermal signals inform dynamic routing decisions in MoE models to reduce energy consumption without significant performance degradation?
+    2. Can energy-aware loss functions or multi-objective optimization during training lead to inherently more power-efficient MoE models?
+    3 .What are the trade-offs between computational performance, energy efficiency, and thermal stability when dynamically adapting MoE models during inference (test-time training)?
+    4. How can expert specialization and load balancing be optimized under varying thermal constraints and dynamic workloads?
+    5. What is the impact of different throttling strategies (e.g., batch size reduction, expert selection, frequency scaling) on overall system efficiency and inference latency in thermally constrained environments?
