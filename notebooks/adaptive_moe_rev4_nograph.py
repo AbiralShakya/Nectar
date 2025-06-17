@@ -123,7 +123,8 @@ class SimpleMoELayer(nn.Module):
             "expert_usage_current": expert_usage_counts.cpu().numpy(),
             "total_assignments": expert_usage_counts.sum().item(),
             "expert_batch_timings_ms": expert_batch_timings,
-            "expert_cumulative_timings_ms": self.expert_timings
+            "expert_cumulative_timings_ms": self.expert_timings,
+            "top_k_indices": top_k_indices.detach().cpu()
         }
 
         return output, aux_loss, metrics
@@ -136,7 +137,6 @@ def compute_energy_loss(selected_expert_indices: torch.Tensor, expert_profiles: 
         if profile:
             energy += profile.get("energy_cost", 0.0)
     return alpha * energy
-
 
 class MoETransformerBlock(nn.Module):
     def __init__(self, d_model, num_experts, top_k, thermal_signal_generator):
@@ -156,7 +156,6 @@ class DummyDataset(torch.utils.data.Dataset):
         self.targets = torch.randn(n, d_model)
     def __getitem__(self, idx): return self.data[idx], self.targets[idx]
     def __len__(self): return len(self.data)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -188,11 +187,10 @@ if __name__ == "__main__":
                 optimizer.zero_grad()
                 output, aux_loss, selected_experts = model(x)
                 task_loss = criterion(output, y)
-                energy_loss = compute_energy_loss(selected_experts, thermal_signal.expert_profiles)
+                selected_indices = selected_experts["top_k_indices"]
+                energy_loss = compute_energy_loss(selected_indices, thermal_signal.expert_profiles)
                 loss = task_loss + energy_loss + aux_loss
                 loss.backward()
                 optimizer.step()
                 prof.step()
             print(f"Epoch {epoch+1} complete. Loss: {loss.item():.4f}")
-
-
