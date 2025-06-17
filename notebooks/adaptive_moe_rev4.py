@@ -1,8 +1,11 @@
-import os, time, threading, torch
+import os, time, threading, argparse
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Tuple, Optional, List, Any
+from typing import Dict, Tuple, Any
+from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
 import pynvml
+
 
 class ThermalSignalGenerator:
     def __init__(self, device_id=0, update_interval=0.5):
@@ -38,7 +41,7 @@ class ThermalSignalGenerator:
 
     def _update_expert_priorities(self):
         decay = {"cool": 0.0, "warm": 0.1, "hot": 0.2, "critical": 0.5}.get(self.thermal_state, 0.0)
-        self.expert_priorities = {str(k): -decay * k for k in range(32)}  # 32 experts max
+        self.expert_priorities = {str(k): -decay * k for k in range(32)}
 
     def get_expert_priorities(self):
         with self.lock:
@@ -47,6 +50,7 @@ class ThermalSignalGenerator:
     @property
     def expert_profiles(self):
         return {str(i): {"energy_cost": 1.0 + 0.05 * i} for i in range(32)}
+
 
 class AdaptiveRouter(nn.Module):
     def __init__(self, num_experts: int, top_k: int, thermal_signal_generator):
@@ -64,19 +68,14 @@ class AdaptiveRouter(nn.Module):
         routing_weights = F.softmax(topk_vals, dim=-1)
         return topk_indices, routing_weights
 
+
 class SimpleMoELayer(nn.Module):
-    def __init__(self, gate: nn.Module, experts: nn.ModuleList, top_k: int = 2, capacity_factor: float = 1.25,
-                 thermal_signal_generator=None):
+    def __init__(self, gate: nn.Module, experts: nn.ModuleList, top_k: int, thermal_signal_generator):
         super().__init__()
         self.gate = gate
         self.experts = experts
         self.n_experts = len(experts)
         self.top_k = top_k
-        self.capacity_factor = capacity_factor
-
-        if top_k > self.n_experts:
-            raise ValueError(f"top_k ({top_k}) > n_experts ({self.n_experts})")
-
         self.router = AdaptiveRouter(self.n_experts, top_k, thermal_signal_generator)
         self.expert_timings: Dict[int, float] = {}
 
@@ -129,6 +128,7 @@ class SimpleMoELayer(nn.Module):
 
         return output, aux_loss, metrics
 
+
 def compute_energy_loss(selected_expert_indices: torch.Tensor, expert_profiles: Dict[str, Dict], alpha=0.001):
     energy = 0.0
     for idx in selected_expert_indices.view(-1):
@@ -136,6 +136,7 @@ def compute_energy_loss(selected_expert_indices: torch.Tensor, expert_profiles: 
         if profile:
             energy += profile.get("energy_cost", 0.0)
     return alpha * energy
+
 
 class MoETransformerBlock(nn.Module):
     def __init__(self, d_model, num_experts, top_k, thermal_signal_generator):
@@ -148,6 +149,7 @@ class MoETransformerBlock(nn.Module):
     def forward(self, x):
         return self.moe_layer(x)
 
+
 class DummyDataset(torch.utils.data.Dataset):
     def __init__(self, n=1000, d_model=64):
         self.data = torch.randn(n, d_model)
@@ -155,26 +157,40 @@ class DummyDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx): return self.data[idx], self.targets[idx]
     def __len__(self): return len(self.data)
 
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--top_k", type=int, default=2)
+    parser.add_argument("--num_experts", type=int, default=8)
+    parser.add_argument("--profile_dir", type=str, default="tb_logs/debug")
+    args = parser.parse_args()
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    d_model, num_experts, top_k = 64, 8, 2
-    batch_size, epochs = 32, 3
+    d_model, batch_size, epochs = 64, 32, 3
 
     thermal_signal = ThermalSignalGenerator(device_id=0)
-    model = MoETransformerBlock(d_model, num_experts, top_k, thermal_signal).to(device)
+    model = MoETransformerBlock(d_model, args.num_experts, args.top_k, thermal_signal).to(device)
     dataset = DummyDataset(n=512, d_model=d_model)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
 
-    for epoch in range(epochs):
-        for x, y in dataloader:
-            x, y = x.to(device), y.to(device)
-            optimizer.zero_grad()
-            output, _, selected_experts = model(x)
-            task_loss = criterion(output, y)
-            energy_loss = compute_energy_loss(selected_experts, thermal_signal.expert_profiles)
-            loss = task_loss + energy_loss
-            loss.backward()
-            optimizer.step()
-        print(f"Epoch {epoch+1} complete. Final loss: {loss.item():.4f}")
+    with profile(
+        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=2),
+        on_trace_ready=tensorboard_trace_handler(args.profile_dir),
+        record_shapes=True,
+        with_stack=True
+    ) as prof:
+        for epoch in range(epochs):
+            for x, y in dataloader:
+                x, y = x.to(device), y.to(device)
+                optimizer.zero_grad()
+                output, aux_loss, selected_experts = model(x)
+                task_loss = criterion(output, y)
+                energy_loss = compute_energy_loss(selected_experts, thermal_signal.expert_profiles)
+                loss = task_loss + energy_loss + aux_loss
+                loss.backward()
+                optimizer.step()
+                prof.step()
+            print(f"Epoch {epoch+1} complete. Loss: {loss.item():.4f}")
