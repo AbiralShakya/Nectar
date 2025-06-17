@@ -158,6 +158,36 @@ class DummyDataset(torch.utils.data.Dataset):
     def __len__(self): return len(self.data)
 
 
+
+import matplotlib.pyplot as plt
+
+def plot_expert_usage_and_timing(metrics: Dict[str, Any], save_path: str = None):
+    usage = metrics["expert_usage_current"]
+    timings = metrics["expert_batch_timings_ms"]
+
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+
+    expert_ids = list(range(len(usage)))
+    timing_vals = [timings.get(i, 0.0) for i in expert_ids]
+
+    ax1.bar(expert_ids, usage, alpha=0.7, label="Expert Usage (token count)", color='tab:blue')
+    ax1.set_xlabel("Expert ID")
+    ax1.set_ylabel("Token Count", color='tab:blue')
+    ax1.tick_params(axis='y', labelcolor='tab:blue')
+
+    ax2 = ax1.twinx()
+    ax2.plot(expert_ids, timing_vals, label="Timing (ms)", color='tab:red', linewidth=2)
+    ax2.set_ylabel("Timing (ms)", color='tab:red')
+    ax2.tick_params(axis='y', labelcolor='tab:red')
+
+    plt.title("Expert Usage & Timing Per Batch")
+    fig.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    else:
+        plt.show()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--top_k", type=int, default=2)
@@ -194,3 +224,5 @@ if __name__ == "__main__":
                 optimizer.step()
                 prof.step()
             print(f"Epoch {epoch+1} complete. Loss: {loss.item():.4f}")
+            plot_expert_usage_and_timing(selected_experts, save_path=f"plots/epoch_{epoch+1}.png")
+

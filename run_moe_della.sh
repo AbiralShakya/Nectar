@@ -6,7 +6,6 @@
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=01:00:00
-#SBATCH --partition=gpu
 #SBATCH --array=0-3
 
 
@@ -28,7 +27,7 @@ which python
 PROFILE_DIR="tb_logs/profile_k${TOP_K}_e${NUM_EXPERTS}_$SLURM_JOB_ID"
 mkdir -p "$PROFILE_DIR"
 
-python adaptive_moe_rev4.py \
+python /home/as0714/hardware_efficient_ml\adaptive_moe_rev4.py \
     --top_k $TOP_K \
     --num_experts $NUM_EXPERTS \
     --profile_dir "$PROFILE_DIR"
