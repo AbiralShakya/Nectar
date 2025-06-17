@@ -1,0 +1,14 @@
+energy saved with adaptive routing
+    metric: total energy_loss 
+
+performance loss due to rerouting
+    change in task_loss or accuracy
+
+overhead introduced 
+    latency increase from expert_timings
+
+effectiveness of routing modulation
+    expert usage change, entropy increase
+
+responsiveness to thermal changes 
+    time lab between thermal changes and routing change 

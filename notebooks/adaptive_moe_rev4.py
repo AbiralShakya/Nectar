@@ -203,7 +203,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--top_k", type=int, default=2)
     parser.add_argument("--num_experts", type=int, default=8)
-    parser.add_argument("--profile_dir", type=str, default="tb_logs/debug")
+    #parser.add_argument("--profile_dir", type=str, default="tb_logs/debug")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

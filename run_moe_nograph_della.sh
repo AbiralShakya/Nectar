@@ -23,10 +23,6 @@ echo "Running with top_k=$TOP_K, num_experts=$NUM_EXPERTS"
 nvidia-smi
 which python
 
-PROFILE_DIR="tb_logs/profile_k${TOP_K}_e${NUM_EXPERTS}_$SLURM_JOB_ID"
-mkdir -p "$PROFILE_DIR"
-
 python /home/as0714/hardware_efficient_ml/adaptive_moe_rev4nograph.py \
     --top_k $TOP_K \
     --num_experts $NUM_EXPERTS \
-    --profile_dir "$PROFILE_DIR"
