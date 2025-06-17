@@ -5,6 +5,48 @@ import torch.nn.functional as F
 from typing import Dict, Tuple, Any
 from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
 import pynvml
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+
+# Visualization Functions
+def plot_expert_usage(epoch, expert_usage, out_dir):
+    plt.figure(figsize=(10, 5))
+    plt.bar(np.arange(len(expert_usage)), expert_usage)
+    plt.xlabel("Expert ID")
+    plt.ylabel("Tokens Routed")
+    plt.title(f"Expert Usage at Epoch {epoch}")
+    plt.grid(True)
+    os.makedirs(out_dir, exist_ok=True)
+    plt.savefig(f"{out_dir}/expert_usage_epoch{epoch}.png")
+    plt.close()
+
+def plot_expert_latency(epoch, timings_dict, out_dir):
+    ids = list(timings_dict.keys())
+    times = list(timings_dict.values())
+    plt.figure(figsize=(10, 5))
+    plt.bar(ids, times)
+    plt.xlabel("Expert ID")
+    plt.ylabel("Latency (ms)")
+    plt.title(f"Expert Inference Latency at Epoch {epoch}")
+    plt.grid(True)
+    os.makedirs(out_dir, exist_ok=True)
+    plt.savefig(f"{out_dir}/expert_latency_epoch{epoch}.png")
+    plt.close()
+
+def plot_cumulative_timings(cumulative_timings, out_dir):
+    ids = list(cumulative_timings.keys())
+    times = list(cumulative_timings.values())
+    plt.figure(figsize=(10, 5))
+    plt.bar(ids, times, color='orange')
+    plt.xlabel("Expert ID")
+    plt.ylabel("Cumulative Time (ms)")
+    plt.title("Cumulative Inference Time per Expert")
+    plt.grid(True)
+    os.makedirs(out_dir, exist_ok=True)
+    plt.savefig(f"{out_dir}/expert_cumulative_timing.png")
+    plt.close()
 
 
 class ThermalSignalGenerator:
@@ -123,7 +165,8 @@ class SimpleMoELayer(nn.Module):
             "expert_usage_current": expert_usage_counts.cpu().numpy(),
             "total_assignments": expert_usage_counts.sum().item(),
             "expert_batch_timings_ms": expert_batch_timings,
-            "expert_cumulative_timings_ms": self.expert_timings
+            "expert_cumulative_timings_ms": self.expert_timings,
+            "top_k_indices": top_k_indices.detach().cpu()
         }
 
         return output, aux_loss, metrics
@@ -136,7 +179,6 @@ def compute_energy_loss(selected_expert_indices: torch.Tensor, expert_profiles: 
         if profile:
             energy += profile.get("energy_cost", 0.0)
     return alpha * energy
-
 
 class MoETransformerBlock(nn.Module):
     def __init__(self, d_model, num_experts, top_k, thermal_signal_generator):
@@ -156,37 +198,6 @@ class DummyDataset(torch.utils.data.Dataset):
         self.targets = torch.randn(n, d_model)
     def __getitem__(self, idx): return self.data[idx], self.targets[idx]
     def __len__(self): return len(self.data)
-
-
-
-import matplotlib.pyplot as plt
-
-def plot_expert_usage_and_timing(metrics: Dict[str, Any], save_path: str = None):
-    usage = metrics["expert_usage_current"]
-    timings = metrics["expert_batch_timings_ms"]
-
-    fig, ax1 = plt.subplots(figsize=(10, 5))
-
-    expert_ids = list(range(len(usage)))
-    timing_vals = [timings.get(i, 0.0) for i in expert_ids]
-
-    ax1.bar(expert_ids, usage, alpha=0.7, label="Expert Usage (token count)", color='tab:blue')
-    ax1.set_xlabel("Expert ID")
-    ax1.set_ylabel("Token Count", color='tab:blue')
-    ax1.tick_params(axis='y', labelcolor='tab:blue')
-
-    ax2 = ax1.twinx()
-    ax2.plot(expert_ids, timing_vals, label="Timing (ms)", color='tab:red', linewidth=2)
-    ax2.set_ylabel("Timing (ms)", color='tab:red')
-    ax2.tick_params(axis='y', labelcolor='tab:red')
-
-    plt.title("Expert Usage & Timing Per Batch")
-    fig.tight_layout()
-    if save_path:
-        plt.savefig(save_path)
-    else:
-        plt.show()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -218,11 +229,14 @@ if __name__ == "__main__":
                 optimizer.zero_grad()
                 output, aux_loss, selected_experts = model(x)
                 task_loss = criterion(output, y)
-                energy_loss = compute_energy_loss(selected_experts, thermal_signal.expert_profiles)
+                selected_indices = selected_experts["top_k_indices"]
+                energy_loss = compute_energy_loss(selected_indices, thermal_signal.expert_profiles)
                 loss = task_loss + energy_loss + aux_loss
                 loss.backward()
                 optimizer.step()
                 prof.step()
-            print(f"Epoch {epoch+1} complete. Loss: {loss.item():.4f}")
-            plot_expert_usage_and_timing(selected_experts, save_path=f"plots/epoch_{epoch+1}.png")
+                plot_expert_usage(epoch, selected_experts["expert_usage_current"], out_dir="plots")
+                plot_expert_latency(epoch, selected_experts["expert_batch_timings_ms"], out_dir="plots")
 
+            print(f"Epoch {epoch+1} complete. Loss: {loss.item():.4f}")
+        plot_cumulative_timings(model.moe_layer.expert_timings, out_dir="plots")
