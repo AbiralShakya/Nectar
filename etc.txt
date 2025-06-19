@@ -1,0 +1,115 @@
+Prompt 1: moe_models.py - Core MoE Model Implementation
+
+"You are a senior researcher guiding a development team. Describe the necessary work and considerations for implementing the core MoE model components within the src/moe_models.py file.
+
+Focus on:
+
+QuantizedExpert Implementation:
+Detail the precise steps for implementing the _dequantize_and_unpack method within the QuantizedExpert class. This method should simulate the 4-bit (or 2-bit, specify which) weight packing/unpacking and dequantization process using standard PyTorch operations (e.g., bitwise manipulations, shifts, torch.where for signedness, and scaling with float16 scales). Explain how this simulation makes the dequantization overhead visible to GPU profilers.
+Clarify how QuantizedExpert's __init__ should handle the storage of packed weights (e.g., nn.Parameter with requires_grad=False) and float16 scales.
+Explain how the forward method of QuantizedExpert will utilize _dequantize_and_unpack before performing the linear operations.
+SimpleMoELayer Refinements:
+Ensure the SimpleMoELayer accurately passes current_batch_size (number of tokens in the current input x) to the AdaptiveRouter.
+Confirm how the metrics_buffer within SimpleMoELayer is correctly populated with per-batch metrics extracted from the expert executions.
+MoETransformerBlock Setup:
+How will the MoETransformerBlock use the expert_type argument to correctly instantiate either SimpleExpert or QuantizedExpert for its nn.ModuleList of experts?
+compute_energy_loss Function:
+Provide explicit instructions on how this function will leverage the KernelCostModel instance. Detail how it will iterate through selected_expert_indices and top_k_probs, query the KernelCostModel for the predicted energy costs of each expert's constituent op_types (e.g., linear_fc1, relu, linear_fc2, dequant_unpack_op), and sum these costs, weighted by routing probabilities. Emphasize the importance of matching op_type strings to those used in kernel profiling.
+The goal is to have a robust, switchable MoE model that correctly exposes its computational steps for profiling and integrates with the kernel cost model."
+
+Prompt 2: GPU Telemetry and Profiling Stack
+
+"You are a senior researcher guiding a development team. Describe the necessary work and considerations for implementing and integrating the GPU Telemetry and Profiling Stack, covering both offline and real-time components.
+
+Focus on:
+
+scripts/expert_kernel_profiler.py Enhancements:
+Detail the required improvements to generate_isolated_script to ensure it precisely creates Python scripts for all relevant OPERATION_TEMPLATES. This includes linear_fc1, relu, linear_fc2, and especially the dequant_unpack_op simulation, ensuring correct input dimension mapping.
+Specify how to make OPERATION_TEMPLATES comprehensive to cover every distinct computational step within an MoE expert's forward pass that you wish to profile.
+Outline robust error handling and logging for run_profiler when interacting with nsys and ncu (e.g., capturing stderr/stdout, reporting failures).
+scripts/parse_profiler_output.py and KernelCostModel (in src/moe_models.py):
+Provide explicit instructions for building a sophisticated parse_nsys_sqlite function. This should include:
+How to effectively query the nsys .sqlite database schema to find CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL entries (kernel names, start/end timestamps).
+The methodology for attributing GPU power/energy from GPU_METRICS_RAW (or similar tables) to specific kernels by correlating timestamps and calculating energy (Power x Duration).
+Explain how to handle cases where a single PyTorch op_type might launch multiple underlying CUDA kernels, requiring aggregation of their costs.
+If ncu data is to be parsed (for diagnostic purposes), explain how to export ncu reports to CSV and extract relevant performance counters (e.g., SM occupancy, memory bandwidth).
+Detail how this parsed data will populate the KernelCostModel instance, emphasizing the key fields (op_type, batch_size, energy_joules, latency_ms, temp_impact, and potentially ncu metrics).
+src/monitors.py (GpuSystemMonitor):
+Confirm the robustness and low-overhead nature of its background monitoring thread.
+Describe how to verify pynvml integration on the target Della server or how to ensure reliable fallback to simulation.
+Specify any additional metrics beyond temperature and power that GpuSystemMonitor should collect for comprehensive system state (e.g., GPU utilization, memory utilization, clock speeds, fan speeds).
+The goal is to establish a precise and automated pipeline for generating and consuming kernel-level hardware cost data, and a robust real-time GPU monitoring system."
+
+Prompt 3: Dynamic Routing Intelligence (src/routers.py)
+
+"You are a senior researcher guiding a development team. Describe the necessary work and considerations for implementing the dynamic routing intelligence within the src/routers.py file, focusing on the AdaptiveRouter and its TTHAAdapter component.
+
+Focus on:
+
+AdaptiveRouter Core Logic:
+Detail the implementation of _compute_base_cost_biases. Explain how it correctly sums the energy_joules and temp_impact from the KernelCostModel for all constituent op_types of each expert (e.g., dequant_unpack_op, linear_fc1, relu, linear_fc2), and converts these summed costs into a numerical bias for the gate_logits.
+Implement the static_optimal strategy. How will it use the KernelCostModel to compute fixed biases that theoretically minimize energy for a given workload profile?
+TTHAAdapter Implementation:
+Refine the architecture of self.ttha_adapter (the small MLP). Clearly specify its input dimension (combining flattened predicted_costs_tensor and current_gpu_temp/power) and output dimension (num_experts biases). Justify the choice of activation functions (e.g., ReLU, Tanh).
+Describe the setup of self.ttha_optimizer (e.g., Adam with a very small learning rate, weight_decay) and self.ttha_scheduler for adaptive learning rate.
+Crucially, detail the input feature engineering for TTHAAdapter's forward method. How are cost_features (expert-specific predicted costs) and hardware_features (global GPU stats) structured and combined into the input tensor for the TTHAAdapter?
+update_ttha Method - The Core of TTHA:
+Loss Function Definition: Provide a precise mathematical formulation for total_loss (the TTHA "loss"). Explain how power_loss, temp_loss, latency_penalty, and throughput_bonus are calculated from observed hardware metrics (observed_power, observed_temp, observed_latency, observed_throughput). Explain the choice of penalization (e.g., squared error, max function) and the role of the objective_weights.
+Gradient Flow (The Tricky Part): Detail how to make the ttha_adapter truly trainable by gradients based on this external "loss." This requires ensuring dynamic_biases produced by the ttha_adapter are part of a computation graph that influences the hardware metrics being measured. If a direct differentiable link is too complex, propose a robust proxy (e.g., training ttha_adapter to predict effective biases that would lead to desired hardware outcomes based on a reward signal, or a policy gradient approach if framing as RL). For initial implementation, a simplified backprop (as discussed in the routers.py code comments) is acceptable, but acknowledge its limitations and plan for refinement.
+Explain how self.ttha_history will robustly store all components of the TTHA "loss" for later analysis.
+Other Routing Strategies: Ensure HIERARCHICAL_ADAPTIVE, PREDICTIVE_THERMAL, and MULTI_GPU_AWARE strategies have their bias calculation logic fully implemented, relying on the KernelCostModel, GpuSystemMonitor (including its predict_thermal_trajectory method), and any device_topology information.
+Load Balancing (ExpertLoadBalancer): Confirm ExpertLoadBalancer's seamless integration, ensuring its biases are correctly applied alongside hardware-aware biases.
+ThermalPredictor: Detail how its update and predict_thermal_impact methods will be used by the AdaptiveRouter for proactive decisions.
+The goal is to create a dynamic, self-optimizing router that intelligently biases expert selection based on fine-grained kernel costs and real-time hardware feedback."
+
+Prompt 4: Experiment Orchestration and Logging
+
+"You are a senior researcher guiding a development team. Describe the necessary work and considerations for implementing the overall experiment orchestration and logging within the scripts/run_experiment.py file and related logging components.
+
+Focus on:
+
+scripts/run_experiment.py - Central Control:
+Detail the complete argparse setup, ensuring all necessary parameters (routing_strategy, expert_type, d_model, num_experts, top_k, batch_size, num_samples_per_workload, epochs, profile_dir, log_file, device_id, kernel_cost_model_json, TTHA hyperparameters like ttha_target_power, ttha_target_temp, ttha_latency_penalty_weight) are correctly defined and passed.
+Outline the precise initialization flow for all components: loading KernelCostModel, creating GpuSystemMonitor, instantiating MoETransformerBlock (with correct expert_type, kernel_cost_model, gpu_system_monitor, routing_strategy), DataLoaderManager, and MetricsLogger.
+Describe the nested loop structure for iterating through diverse workload_types and routing_strategys.
+TTHA Update Trigger: Provide explicit instructions on where and how model.moe_layer.router.update_ttha() will be called within the main experiment loop (e.g., after each batch's forward pass) and under what conditions (e.g., only when strategy is kernel_aware_ttha). Detail how observed_metrics for this update are gathered from GpuSystemMonitor and the inference_latency_ms of the current batch.
+Explain how AdaptiveRouter.base_latency_for_penalty will be set (e.g., derived from an initial run of the "baseline" strategy for a typical workload).
+Specify the strategic placement of torch.profiler blocks to capture detailed traces for specific runs (e.g., a few batches at the start of each strategy/workload combination).
+src/metrics_logger.py (MetricsLogger):
+Confirm that the fieldnames list is exhaustive, capturing all relevant metrics: GPU stats, expert usage, batch timings, predicted energy loss, and TTHA's internal loss components (power, temp, latency penalties).
+Detail any necessary data transformations (e.g., converting NumPy arrays/dictionaries to string representations for CSV).
+Ensure robust directory creation and file handling.
+src/data_utils.py (DummyDataset, DataLoaderManager):
+Confirm the diversity of workloads generated ("standard", "high_complexity", "small_batch", "large_batch") adequately exercises the MoE and router.
+The goal is to create a fully automated and comprehensive experimental harness that can systematically test all routing strategies under various conditions and log all necessary data for analysis."
+
+Prompt 5: Analysis and Visualization
+
+"You are a senior researcher guiding a development team. Describe the necessary work and considerations for implementing the comprehensive data analysis and visualization strategy in a new script, scripts/analyze_results.py, for Phase 4: Evaluation and Analysis.
+
+Focus on:
+
+Tools and Data Ingestion:
+Specify the primary Python libraries (Pandas, Matplotlib, Seaborn) for data processing and visualization.
+How will the script ingest the experiment_logs/*.csv files and potentially integrate insights from the profiling_data/*.qdrep (via manual inspection or nsys export json)?
+Quantitative Analysis - Core Comparisons:
+Energy/Thermal Efficiency: Detail the types of plots and metrics to generate:
+Time-series plots of gpu_power_watt and gpu_temperature_c across different strategies for representative workloads.
+Bar charts comparing average and peak energy consumption (Joules/inference or Watts) for each strategy and workload type.
+Quantify percentage reductions in energy and peak temperature.
+Inference Performance:
+Plots comparing inference_latency_ms (mean, P90, P99) and throughput_qps for each strategy and workload.
+Clear visualization of any performance degradation.
+Expert Utilization: Heatmaps or bar charts showing average expert_usage_counts and expert_cumulative_timings_ms for different strategies, highlighting how the router shifts load.
+TTHA Adaptation:
+Plots showing the ttha_power_loss, ttha_temp_loss, and ttha_latency_penalty over time/batches, demonstrating the convergence or adaptation of the TTHA component.
+(If implementable) Visualizations of the learned biases/weights of the TTHAAdapter's MLP.
+Overhead: Quantify the overhead of the AdaptiveRouter and TTHA (e.g., as a percentage of total inference time), possibly using torch.profiler data.
+Qualitative Analysis & Trace Insights:
+How will TensorBoard's "Trace" viewer be used to provide visual evidence for claims (e.g., showing reduced kernel execution times for dequantization, or different kernel dispatch patterns for various strategies)?
+Examples of specific traces to highlight (e.g., a "hot" baseline run vs. a "cooled" TTHA run).
+Trade-off Visualization:
+Propose methods to plot the "Performance vs. Energy" trade-off (e.g., scatter plots with strategies as points), illustrating Pareto efficiency.
+Statistical Rigor: Discuss how to perform statistical tests (e.g., t-tests) to confirm the significance of observed differences between strategies.
+Paper-Ready Outputs: Emphasize the generation of publication-quality figures and tables.
+The goal is to provide a compelling and rigorous analysis that fully quantifies the effectiveness and trade-offs of the proposed kernel-aware TTHA routing mechanism."
