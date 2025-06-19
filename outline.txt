@@ -207,3 +207,86 @@ Code Documentation and Open-Sourcing:
 Clean up and extensively comment your code.
 Prepare it for public release (e.g., on GitHub) to ensure reproducibility.
 Provide clear instructions on how to set up the environment and run your experiments.
+
+
+hase 0.5: Refine Base MoE and Monitoring (Quick Verification)
+
+Goal: Ensure your core MoE model runs, and GpuSystemMonitor collects basic nvidia-smi data reliably.
+Action:
+Consolidate: Take your existing moe_experiment.py (or whatever your main script is named) and ensure it has the most up-to-date ThermalEnergyMonitor (renamed to GpuSystemMonitor), SimpleMoELayer, and basic AdaptiveRouter ("baseline" strategy only).
+Cleanup: Remove any TTHA or KernelCostModel specific code for now to simplify.
+Run: Execute python moe_experiment.py for a few batches.
+Verify:
+Does the MoE model run without errors?
+Does GpuSystemMonitor print temperature/power data (real or simulated)?
+Does torch.profiler generate a trace? View it in TensorBoard to confirm basic kernel launches for nn.Linear, nn.ReLU.
+Output: A stable, basic MoE inference loop with overall GPU monitoring.
+Iteration 1: Isolated Kernel Profiling (The New Core)
+
+Goal: Successfully run nsys and ncu on isolated expert operations and generate raw profiling data.
+Code Focus: expert_kernel_profiler.py
+Action:
+Simplify expert_kernel_profiler.py: Focus only on getting nsys to work for nn.Linear and nn.ReLU calls within your temporary script generation logic.
+Test generate_isolated_script: Run it independently to ensure it creates valid Python files that execute on GPU.
+Test run_nsys_profile:
+Run it for one op_type (e.g., "linear_expert_fc1") and one batch_size.
+Check if .qdrep and .sqlite files are generated.
+Crucial: Load the .qdrep in TensorBoard (or nsys gui) and verify that only the expected kernels (GEMM, ReLU) are in the trace and that they have plausible durations.
+(Optional but Recommended) Test run_ncu_profile: Similar to nsys, verify it generates .ncu-rep files.
+Verify: You can reliably generate isolated kernel profiles using nsys.
+Output: Directory full of .qdrep and (optionally) .ncu-rep files for individual operations at different batch sizes.
+Iteration 2: Building the KernelCostModel (Parsing Profiling Data)
+
+Goal: Accurately parse the nsys .sqlite (and optionally ncu) outputs to build a usable KernelCostModel. This is often the trickiest part due to schema complexity.
+Code Focus: parse_profiler_output.py and the KernelCostModel class.
+Action:
+Refine parse_nsys_sqlite: This is the heart of this iteration.
+Start Simple: First, just extract kernel name, start, end, and duration.
+Inspect DB: Use sqlitebrowser (or similar) to open an nsys .sqlite file. Explore the table names and column names (e.g., CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL, GPU_METRICS_RAW, StringTable). This is how you'll learn the schema.
+Query for Metrics: Iteratively improve your SQL queries to:
+Find the main kernel (e.g., GEMM) for your operation.
+Find associated power/temperature metrics within its start/end timestamps. This often involves joining CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL with tables like GPU_METRICS_RAW based on correlation_id or timestamp ranges.
+Calculate energy (Power * Duration).
+Implement Aggregation: If a single PyTorch op launches multiple kernels, decide how to aggregate their costs into a single op_type cost.
+Implement KernelCostModel class: Make sure it can load your parsed data (e.g., from a JSON file) and perform lookups (get_cost).
+Run: Execute python parse_profiler_output.py.
+Verify:
+Does it produce kernel_cost_model.json?
+Open the JSON: Does it contain plausible energy/latency values for different op_types and batch_sizes?
+Test KernelCostModel.get_cost() with known inputs.
+Output: A reliable kernel_cost_model.json file and a working KernelCostModel class.
+Iteration 3: Integrate KernelCostModel into Baseline & Static Optimal
+
+Goal: Make your main MoE experiment aware of kernel costs for metrics and for the "static optimal" strategy.
+Code Focus: moe_experiment.py, SimpleMoELayer, compute_energy_loss, AdaptiveRouter.
+Action:
+Load KernelCostModel: In moe_experiment.py's main, load the kernel_cost_model.json at startup and create a KernelCostModel instance.
+Pass KernelCostModel: Pass this instance to MoETransformerBlock's __init__, then to SimpleMoELayer's __init__.
+Refactor compute_energy_loss: Update it to use kernel_cost_model.get_cost() for predicted energy costs based on selected_expert_indices and their top_k_probs.
+Implement QuantizedExpert (Simulated): Replace SimpleExpert with a basic QuantizedExpert that simulates 4-bit packing/unpacking as discussed, making those operations visible to torch.profiler.
+Implement "static_optimal" strategy: In AdaptiveRouter, use the KernelCostModel to pre-calculate fixed biases that favor lower-cost experts (as if you knew the optimal static assignment).
+Run & Verify:
+Run moe_experiment.py with strategy="baseline" and strategy="static_optimal".
+Check experiment_metrics.csv:
+Is the new energy_loss column being populated correctly using predicted kernel costs?
+Does "static_optimal" actually yield a lower energy_loss than "baseline" (as it should, by design)?
+View torch.profiler traces for "baseline" vs. "static_optimal" to observe how the pattern of kernel launches might subtly change due to expert routing.
+Output: A main experiment script that tracks predicted kernel energy costs and demonstrates a static, kernel-aware optimal.
+Iteration 4: Test-Time Hardware-Efficiency Adaptation (TTHA) - Core Logic
+
+Goal: Implement the adaptive TTHA component in AdaptiveRouter and its update mechanism.
+Code Focus: AdaptiveRouter (ttha_adapter, ttha_optimizer, update_ttha).
+Action:
+Add TTHA Components to AdaptiveRouter.__init__: The ttha_adapter (e.g., small MLP), its ttha_optimizer, and ttha_history.
+Refactor AdaptiveRouter.forward: Add the logic for strategy="kernel_aware_ttha". This involves:
+Calculating base_cost_biases from KernelCostModel.
+Getting current_gpu_temp/power from GpuSystemMonitor.
+Passing these as input to self.ttha_adapter to get dynamic_biases.
+Combining base_cost_biases + dynamic_biases to get final_biases.
+Implement AdaptiveRouter.update_ttha: Define the TTHA "loss" (based on observed_power, temp, latency) and perform optimizer.zero_grad(), ttha_loss_tensor.backward(), ttha_optimizer.step(). Pay close attention to how you get a .backward() call to update ttha_adapter based on observed metrics. A direct ttha_loss_tensor.backward() is a simplification, you might need to structure the TTHA adapter's output to be part of a larger computation graph that leads to the observed metrics. Alternatively, consider a simpler, non-gradient-based update rule (e.g., a P-controller).
+Integrate update_ttha in Main Loop: Call model.moe_layer.router.update_ttha(...) after each batch.
+Run & Verify:
+Run moe_experiment.py with strategy="kernel_aware_ttha".
+Check experiment_metrics.csv: Are the ttha_history values (power_loss, temp_loss etc.) changing?
+Does gpu_power_watt and gpu_temperature_c tend to decrease over a long run for this strategy, compared to "baseline"? (This is the ultimate test).
+Output: A functional TTHA system that attempts to adapt its routing based on real-time feedback.
