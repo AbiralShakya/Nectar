@@ -393,7 +393,7 @@ class TTHAAdapter(nn.Module):
         Args:
             cost_features: Expert cost features [batch_size, num_experts * 4]
             hardware_features: Hardware metrics [batch_size, 8]
-            temporal_features: Temporal context [batch_size, seq_len, hidden_dim]
+            temporal_features: Temporal context [batch_size, seq_len, hidden_dim] - Optional
         
         Returns:
             routing_biases: Bias adjustments for each expert
@@ -405,15 +405,36 @@ class TTHAAdapter(nn.Module):
         cost_embed = self.cost_processor(cost_features)
         hardware_embed = self.hardware_processor(hardware_features)
         
-        # Temporal processing
+        # Temporal processing - if temporal_features is None, use a zero tensor
         if temporal_features is not None:
             temporal_embed, _ = self.temporal_processor(temporal_features)
             temporal_embed = temporal_embed[:, -1, :]  # Use last timestep
         else:
-            temporal_embed = torch.zeros_like(cost_embed)
-        
+            # Create a zero tensor with the expected shape for embedding if temporal_features is not provided
+            # This ensures the concat in fusion_layer has consistent dimensions
+            temporal_embed = torch.zeros_like(cost_embed) # Assuming cost_embed and hardware_embed are same hidden_dim
+            # If cost_embed and hardware_embed output different hidden_dim:
+            # temporal_embed = torch.zeros(batch_size, self.cost_processor[-1].out_features, device=cost_features.device)
+
         # Attention-based fusion
+        # Need to ensure all features are of the same embedding dimension (hidden_dim)
+        # If cost_embed, hardware_embed, temporal_embed have different last dimensions,
+        # they need to be processed to match before stacking for MultiheadAttention.
+        # Assuming they are all of `hidden_dim` from their respective processors.
+        
+        # Check dimensions before stacking for MultiheadAttention
+        if cost_embed.size(-1) != self.input_attention.embed_dim:
+            # If necessary, apply an additional linear layer to match embed_dim
+            cost_embed = nn.Linear(cost_embed.size(-1), self.input_attention.embed_dim).to(cost_embed.device)(cost_embed)
+        if hardware_embed.size(-1) != self.input_attention.embed_dim:
+            hardware_embed = nn.Linear(hardware_embed.size(-1), self.input_attention.embed_dim).to(hardware_embed.device)(hardware_embed)
+        if temporal_embed.size(-1) != self.input_attention.embed_dim:
+            temporal_embed = nn.Linear(temporal_embed.size(-1), self.input_attention.embed_dim).to(temporal_embed.device)(temporal_embed)
+
+
         combined_features = torch.stack([cost_embed, hardware_embed, temporal_embed], dim=1)
+        
+        # Query, Key, Value all come from combined_features itself for self-attention
         attended_features, _ = self.input_attention(
             combined_features, combined_features, combined_features
         )
@@ -693,50 +714,56 @@ class AdaptiveRouter(nn.Module):
         return biases
     
     def _compute_ttha_biases(self, base_biases: torch.Tensor, device: torch.device) -> torch.Tensor:
-        """Compute TTHA-based dynamic biases"""
+        """Compute TTHA-based dynamic biases by feeding actual data to the TTHAAdapter."""
         if self.ttha_adapter is None:
-            return base_biases
+            return base_biases # Should not happen if strategy is KERNEL_AWARE_TTHA
         
-        # Prepare cost features
-        cost_features = torch.zeros(1, self.num_experts * 4, device=device)
-        for i, profile in enumerate(self.expert_profiles):
-            base_idx = i * 4
-            cost_features[0, base_idx:base_idx+4] = torch.tensor([
-                sum(op['energy'] for op in profile.operations.values()),
-                sum(op['latency'] for op in profile.operations.values()),
+        # Prepare cost_features for TTHAAdapter: [batch_size=1, num_experts * 4]
+        # (energy, latency, thermal_sensitivity, cache_efficiency) for each expert
+        cost_features_list = []
+        for profile in self.expert_profiles:
+            # Aggregate costs from ExpertProfile.operations (which come from KernelCostModel)
+            expert_total_energy = sum(op['energy'] for op in profile.operations.values())
+            expert_total_latency = sum(op['latency'] for op in profile.operations.values())
+            
+            cost_features_list.extend([
+                expert_total_energy,
+                expert_total_latency,
                 profile.thermal_sensitivity,
                 profile.cache_efficiency
-            ], device=device)
-        
-        # Prepare hardware features
+            ])
+        cost_features = torch.tensor(cost_features_list, device=device, dtype=torch.float32).unsqueeze(0) # Unsqueeze for batch_size=1
+
+        # Prepare hardware_features for TTHAAdapter: [batch_size=1, 8]
         gpu_stats = self.gpu_system_monitor.get_current_stats()
-        hardware_metrics = HardwareMetrics(
-            timestamp=gpu_stats['timestamp'],
-            gpu_id=0,
+        # Create a full HardwareMetrics object to use its to_tensor method
+        hardware_metrics_instance = HardwareMetrics(
+            timestamp=gpu_stats.get('timestamp', time.time()),
+            gpu_id=0, # Assuming single GPU for simplicity, or adapt for multi-GPU
             temperature=gpu_stats['temperature'],
             power_watts=gpu_stats['power_watt'],
-            utilization=gpu_stats['utilization'],
-            memory_used=gpu_stats.get('memory_usage', 0.5) * 24000,
-            memory_total=24000,
-            clock_speed=1800,
-            fan_speed=2000,
+            utilization=gpu_stats['gpu_utilization_percent'], # Corrected key
+            memory_used=gpu_stats['memory_utilization_percent'] * self.gpu_system_monitor.metrics_history[0][-1].memory_total if self.gpu_system_monitor.metrics_history[0] else 0, # Estimate from util
+            memory_total=self.gpu_system_monitor.metrics_history[0][-1].memory_total if self.gpu_system_monitor.metrics_history[0] else 24000, # Get from monitor's internal state
+            clock_speed=1800, # Dummy, can be from monitor if available
+            fan_speed=2000, # Dummy
             thermal_throttling=gpu_stats.get('thermal_throttling', False),
-            power_limit=300.0,
-            voltage=1.05
+            power_limit=300.0, # Dummy
+            voltage=1.05 # Dummy
         )
-        
-        hardware_features = hardware_metrics.to_tensor(device).unsqueeze(0)
-        
-        # Get TTHA predictions
+        hardware_features = hardware_metrics_instance.to_tensor(device).unsqueeze(0) # Unsqueeze for batch_size=1
+
+        # Get TTHA predictions (no_grad as this is during inference for routing)
         with torch.no_grad():
             dynamic_biases, uncertainties = self.ttha_adapter(
-                cost_features, hardware_features
+                cost_features, hardware_features, temporal_features=None # Pass temporal_features if you implement them
             )
         
         # Combine base biases with dynamic adjustments
-        combined_biases = base_biases + dynamic_biases.squeeze(0) * 0.5  # Scale dynamic component
+        combined_biases = base_biases + dynamic_biases.squeeze(0) * 0.5  # Scale dynamic component (hyperparameter)
         
         return combined_biases
+
     
     def _compute_hierarchical_biases(self, base_biases: torch.Tensor, 
                                    device: torch.device, 
