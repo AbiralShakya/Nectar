@@ -48,3 +48,162 @@ Compiler-Level Integration:
 Work with compiler developers to ensure your algorithmic patterns can be efficiently compiled. Sometimes small changes in algorithm expression can lead to dramatically different compiled code.
 Hardware-Software Interface Design:
 Propose new hardware primitives that would make your algorithms more efficient. Engage with hardware designers to influence future chip designs based on your algorithmic needs.
+
+
+
+
+
+
+Phase 0: Setup and Environment Preparation
+
+This is the foundational step before any profiling or experimentation.
+
+Hardware Acquisition/Access:
+
+Secure access to the target GPU(s) (e.g., NVIDIA A100, H100, RTX series).
+Ensure adequate CPU, RAM, and storage for data.
+(If using external power meters) Acquire and set up the necessary hardware and connectors.
+Operating System & Drivers:
+
+Install a compatible Linux distribution (Ubuntu is common).
+Install the latest stable NVIDIA GPU drivers.
+Install CUDA Toolkit (matching your PyTorch version's compatibility, usually a minor version below the latest).
+Software Installation:
+
+PyTorch: Install with CUDA support.
+pynvml: For real-time GPU monitoring.
+NVIDIA Nsight Systems (nsys): Part of the CUDA Toolkit. Ensure it's in your PATH.
+NVIDIA Nsight Compute (ncu): Part of the CUDA Toolkit. Ensure it's in your PATH.
+Python Libraries: pandas, numpy, matplotlib, seaborn, argparse, csv.
+Git: For version control.
+Initial Codebase Setup:
+
+Create your Git repository.
+Implement the basic MoE model (your MoETransformerBlock, SimpleMoELayer, Experts). Keep it modular.
+Implement the GpuSystemMonitor (your ThermalEnergyMonitor) using pynvml as a background thread. Verify it's correctly reporting overall GPU temperature and power.
+Set up torch.profiler with tensorboard_trace_handler to ensure basic profiling works.
+Phase 1: Offline Kernel Profiling and Cost Model Generation
+
+This is the new critical step to gain kernel-level insights.
+
+Identify Expert Kernels:
+
+Run a single forward pass through your MoETransformerBlock (or just an Expert module) with a representative input.
+Use torch.profiler (with record_shapes=True, with_stack=True) to generate a trace.
+Load the trace in TensorBoard and examine the "GPU Kernels" section. Identify the specific CUDA kernels that are launched as part of an expert's computation (e.g., volta_sgemm, ampere_f8_f8_gemm, element-wise ops, ReLU). Note their names and approximate durations.
+Understand the typical input/output shapes for these kernels when executed by an expert.
+Design Kernel Profiling Scenarios:
+
+For each unique type of kernel identified (e.g., the GEMM operation in an expert's linear layers, the ReLU activation):
+Create isolated test cases that directly launch these kernels with varying input dimensions/batch sizes that reflect the actual range of inputs an expert might receive.
+Crucial: Ensure these isolated kernel launches are as "pure" as possible, minimizing noise from other operations.
+Automated Kernel Profiling Script:
+
+Write a Python script (or shell script calling Python) that:
+Iterates through the designed kernel profiling scenarios (expert ID, input shape, batch size).
+For each scenario, wraps the kernel execution with nsys. Example: nsys profile -o output.qdrep --export=sqlite --stats=true python your_kernel_test_script.py arg1 arg2.
+(Optional, but recommended for deeper analysis) For a subset of scenarios, also run ncu to get detailed hardware counter metrics. Example: ncu --set full -o output.ncu-rep python your_kernel_test_script.py.
+(If using external power meter) Integrate commands or triggers to synchronize power meter data collection with kernel execution.
+Data Extraction and KernelCostModel Construction:
+
+Develop Python scripts (using pandas likely) to parse the output from nsys (its .qdrep files can be queried via sqlite or converted to CSV) and ncu (text or .ncu-rep reports).
+Extract key metrics for each kernel launch:
+Energy (Joules): This is the most critical. nsys can provide some estimates, but external power meters are best. Otherwise, model based on power consumption during the kernel's execution window.
+Average Power (Watts): During kernel execution.
+Peak Power (Watts): During kernel execution.
+Execution Time (Latency - ms): From nsys or torch.cuda.Event.
+Thermal Impact: Hard to get per-kernel real-time temp. This might be modeled (e.g., Temp_Rise∝Energy_Cost) or tied to overall GPU temperature during heavy usage of that kernel type.
+Key Performance Counters (from ncu): SM active cycles, memory bandwidth, L1/L2 cache hit rates, FLOPS utilization.
+Store this data in a structured format (e.g., a dictionary, a Pandas DataFrame, or a JSON file) – this is your KernelCostModel database.
+Implement the KernelCostModel class in your main codebase, allowing easy lookup: model.get_cost(expert_id, input_shape) -> Dict[str, float].
+Analyze Correlations: Use matplotlib/seaborn to visualize relationships between input shapes, kernel types, and their measured power/thermal/latency characteristics. This is a mini-research output in itself.
+Phase 2: Baseline Characterization (Using the KernelCostModel)
+
+Now you apply the knowledge gained from Phase 1.
+
+Integrate KernelCostModel into SimpleMoELayer (for metrics):
+
+Modify SimpleMoELayer's forward method to lookup the predicted energy/thermal cost for the kernels invoked by each chosen expert using the KernelCostModel. This allows you to track the predicted energy/thermal contribution of activated experts during inference.
+Adjust compute_energy_loss to use these looked-up values.
+Define Baseline Routing Strategies:
+
+"Original" MoE (Load Balancing Only): Ensure your AdaptiveRouter (when strategy="baseline") explicitly does not use any KernelCostModel data or real-time GpuSystemMonitor biases for routing decisions. It should rely purely on gate_logits and aux_loss for load balancing.
+"Static Optimal" (Kernel-Aware Simulation): Implement this strategy in AdaptiveRouter. For a fixed set of input types, determine the routing decisions that minimize predicted total energy consumption based on your KernelCostModel. This might involve a small pre-computation step for specific representative workloads to find "optimal" static expert assignments. This is your lower bound.
+Workload Generation:
+
+Use your WorkloadGenerator to create diverse inference workloads (varying input complexities, batch sizes).
+Experiment Execution and Data Collection:
+
+Run your MoE model with both "original" and "static_optimal" strategies.
+Use your MetricsLogger to record:
+Overall GPU power and temperature (from GpuSystemMonitor).
+Inference latency and throughput.
+Expert utilization (actual counts).
+Predicted energy/thermal cost of the activated kernels per batch (derived from KernelCostModel lookup).
+Auxiliary loss, task loss, total loss.
+Periodically run torch.profiler for short intervals during these runs to collect detailed traces for post-hoc analysis (e.g., confirming kernel activity and durations).
+Baseline Data Analysis:
+
+Use pandas and plotting libraries to analyze the experiment_metrics.csv data.
+Quantify baseline energy consumption, thermal behavior, and performance for different workloads.
+Compare "original" vs. "static_optimal" to establish the theoretical energy savings achievable.
+Identify which workloads or input patterns cause higher energy/thermal footprints in the baseline.
+Correlate actual GPU telemetry with the predicted kernel costs of activated experts.
+Phase 3: Real-time Kernel-Aware Dynamic Routing Implementation
+
+This is where the magic happens – implementing your core contribution.
+
+Refine GpuSystemMonitor (ThermalEnergyMonitor):
+
+Its primary role now is to provide overall GPU health (temperature, power) to the router as a contextual signal.
+It might also provide more abstracted "pressure" signals (e.g., "high thermal pressure on GPU," "approaching power limit").
+Implement "kernel_aware" Strategy in AdaptiveRouter:
+
+The routing decision should now combine:
+The original gate_logits (from the model's gating network, representing token-expert affinity).
+A "cost bias" derived from the KernelCostModel for each potential expert.
+An "overall GPU health bias" from GpuSystemMonitor (e.g., if the GPU is generally hot, it might further penalize activating any expert predicted to be high-cost, or prioritize experts on cooler SMs if multi-SM profiling was done).
+Consider how to weigh these factors (e.g., simple weighted sum, or a more sophisticated heuristic). A simple initial approach would be biased_logits = gate_logits - (alpha * predicted_energy_cost_per_expert) - (beta * predicted_thermal_impact_per_expert).
+Objective function for routing: The loss function for the gating network during training (if you're fine-tuning the router) can directly incorporate energy/thermal costs. For inference, it's about biasing the top-k selection.
+Experiment Execution and Data Collection:
+
+Run the same diverse workloads from Phase 2, but with the "kernel_aware" routing strategy.
+Collect all the same metrics as in Phase 2 using MetricsLogger.
+Crucially, track the frequency and nature of dynamic routing changes (e.g., how often does the router pick a "sub-optimal" expert (in terms of original logits) but "optimal" in terms of energy?).
+Phase 4: Evaluation and Analysis
+
+This is the phase for quantifying your research claims.
+
+Quantitative Analysis:
+
+Energy Reduction: Compare average/peak power and total energy consumption of "kernel_aware" vs. "baseline" and "static_optimal". Quantify percentage reductions.
+Thermal Mitigation: Compare average/peak temperatures. Show how thermal hotspots are reduced.
+Performance Impact: Compare inference latency (mean, P99) and throughput. Explicitly state if degradation is "significant" based on your pre-defined threshold.
+Expert Utilization Shift: Analyze how the distribution of expert usage changes and how this correlates with energy/thermal savings. Show how the "cheaper" experts are utilized more.
+Overhead: Measure the computational overhead of the dynamic routing logic itself (time spent in AdaptiveRouter).
+Statistical Significance: If multiple runs are feasible, use statistical tests (e.g., t-tests) to confirm the significance of your improvements.
+Qualitative Analysis & Discussion:
+
+Adaptability: Describe how the kernel-aware router adapts its decisions in response to changing workload patterns and overall GPU thermal/power state. Provide specific examples.
+Trade-offs: Discuss the balance achieved between energy/thermal efficiency and performance. If performance degradation occurred, explain why and whether it's acceptable.
+Limitations: Be transparent about any limitations of your approach (e.g., reliance on offline profiling, specific GPU architecture, simplified thermal models).
+Insights from Profiling: Use your nsys/ncu traces to visually demonstrate how the kernel-aware routing changes the actual execution flow on the GPU.
+Phase 5: Refinement and Paper Writing
+
+This is the culmination of your research.
+
+Iterative Refinement:
+
+Based on Phase 4 results, identify areas for improvement in your routing logic, kernel cost model, or monitoring frequency.
+Repeat Phases 3 & 4 with refined approaches if time permits.
+Structure the Paper: Follow the outline provided previously (Introduction, Background, Methodology, Experimental Setup, Results, Conclusion).
+
+Visualize Results: Create compelling graphs and figures using matplotlib/seaborn. Include diagrams for your system architecture and routing logic.
+
+Write and Revise: Clearly articulate your problem, solution, methodology, and findings. Focus on clarity, conciseness, and scientific rigor.
+
+Code Documentation and Open-Sourcing:
+
+Clean up and extensively comment your code.
+Prepare it for public release (e.g., on GitHub) to ensure reproducibility.
+Provide clear instructions on how to set up the environment and run your experiments.

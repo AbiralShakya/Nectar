@@ -12,3 +12,20 @@ effectiveness of routing modulation
 
 responsiveness to thermal changes 
     time lab between thermal changes and routing change 
+
+
+conttrol theory kind of 
+    RL framing for routing policy
+
+        thermal state + past timings as observation
+
+MLSys Element	How You're Doing It (or Could)
+Telemetry-aware execution	ThermalSignalGenerator, dynamic top-k routing
+Runtime adaptation	AdaptiveRouter modifies logits at each batch
+Sparse compute optimization	MoE experts routed per-token; potential to fuse sparsity into kernels
+Profiling integration	torch.profiler, custom timers, pynvml
+Energy vs performance tradeoff	Explicit energy_loss in loss function
+GPU-aware scheduling	Based on temp/power and expert latency data
+
+
+A dynamic system-level optimization layer that uses real-time GPU telemetry and runtime profiling to modulate compute path execution (expert routing) under resource constraints.

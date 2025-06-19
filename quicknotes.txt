@@ -181,4 +181,4 @@ The key is to maintain a tight development loop with frequent validation on smal
 Modern inference workdloads, especially for sparse or modular models like MoE, must adapt not only to diverse inputs but also to fluctuating hardware conditions such as power limits, thermal throttling, and latency constraints. In this paper, 
 we propose a novel integration of test time training (TTT) with energy aware routing to form a dynamic control layer for large models. OUr method adapts model behavior to runtime energy profiles by adjusting expert activation, routing decisions, and layer sensitivity, 
 all without retraining. We show that this approach maintains high performance across domain shifted inputs while significantly reducing energy consumption udner constrained conditions. Our work bridges TTT, sparse models, and low-level profiling to define a new paradigm for 
-efficient, adaptive interference under real world systems constraints. 
+efficient, adaptive interference under real world systems constraints.
