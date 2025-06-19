@@ -131,6 +131,8 @@ def run_profiler(profiler_cmd_base: list, python_script_path: str, output_path: 
     """
     Executes a profiler command on the generated Python script.
     """
+    profile_filename_base = f"{op_name}_d{d_model_base}_b{batch_size}" # Define it here
+
     cmd = profiler_cmd_base + [
         f"--output={output_path}",
         "python", python_script_path
@@ -138,7 +140,8 @@ def run_profiler(profiler_cmd_base: list, python_script_path: str, output_path: 
     
     # Check if the output file already exists. If yes, skip to save time during debugging.
     # For nsys, it adds .qdrep; for ncu, it adds .ncu-rep
-    final_output_file = output_path + (".qdrep" if profile_type == "nsys" else ".ncu-rep")
+    final_output_file = os.path.join(os.path.dirname(output_path), profile_filename_base + (".qdrep" if profile_type == "nsys" else ".ncu-rep")) # Correct path construction
+
     if os.path.exists(final_output_file):
         print(f"Skipping {profile_type} for {profile_filename_base}: Output file already exists.")
         return
@@ -152,7 +155,7 @@ def run_profiler(profiler_cmd_base: list, python_script_path: str, output_path: 
         print(f"Stderr:\n{process.stderr}")
         print(f"Stdout:\n{process.stdout}") # Ncu often puts useful info here
     else:
-        print(f"{profile_type} completed for {op_name}. Output: {output_path}")
+        print(f"{profile_type} completed for {op_name}. Output: {final_output_file}") # Print the correct final path
 
 def main():
     parser = argparse.ArgumentParser(description="Offline Expert Kernel Profiler")
@@ -190,8 +193,9 @@ def main():
                 
                 generate_isolated_script(op_name, args.d_model, batch_size, temp_script_path)
                 
+                # The output path for profilers is constructed here
                 profile_filename_base = f"{op_name}_d{args.d_model}_b{batch_size}"
-
+                
                 # Run Nsys
                 nsys_output_path = os.path.join(nsys_dir, profile_filename_base)
                 run_profiler(nsys_cmd_base, temp_script_path, nsys_output_path, "nsys", op_name, args.d_model, batch_size)

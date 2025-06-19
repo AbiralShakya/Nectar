@@ -1,51 +1,23 @@
+# src/moe_models.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import time
+import time # For expert timing in SimpleMoELayer
 from typing import Dict, Tuple, Any
 from routers import AdaptiveRouter
-from thermal_signal import ThermalSignalGenerator
-
-
-class KernelCostModel: 
-    def __init__(self, data_path: str = None, data: dict = None):
-        if data_path:
-            import pandas as pd
-            self.data = pd.read_json(data_path)
-            self.data.set_index(["op_type", "batch_size"], inplace=True)
-        elif data is not None:
-            import pandas as pd
-            self.data = pd.DataFrame(data)
-            self.data.set_index(["op_type", "batch_size"], inplace=True)
-        else:
-            self.data = pd.DataFrame(columns=["op_type", "batch_size", "energy_joules", "latency_ms", "temp_impact"])
-            self.data.set_index(["op_type", "batch_size"], inplace=True)
-
-    def get_cost(self, op_type: str, batch_size: int) -> dict:
-        try:
-            return self.data.loc[(op_type, batch_size)].to_dict()
-        except KeyError:
-            # Fallback for missing data - crucial during early development
-            # You should refine these defaults based on initial profiling if possible
-            # These are simple dummy values for now
-            energy = {'linear_fc1': 0.05, 'relu': 0.001, 'linear_fc2': 0.05}.get(op_type, 0.01) * (batch_size / 32)
-            latency = {'linear_fc1': 1.0, 'relu': 0.05, 'linear_fc2': 1.0}.get(op_type, 0.1) * (batch_size / 32)
-            temp_impact = {'linear_fc1': 0.01, 'relu': 0.0001, 'linear_fc2': 0.01}.get(op_type, 0.001) * (batch_size / 32)
-            
-            # Ensure minimum values, avoid zero for small batches
-            energy = max(energy, 0.001)
-            latency = max(latency, 0.01)
-            temp_impact = max(temp_impact, 0.0001)
-            
-            # print(f"Warning: No profiled data for op_type '{op_type}' batch {batch_size}. Using defaults.")
-            return {"energy_joules": energy, "latency_ms": latency, "temp_impact": temp_impact}
-
+# Placeholder for KernelCostModel and AdaptiveRouter from other modules
+# These imports assume the files are in the same 'src' directory or accessible via Python path
+# Corrected: KernelCostModel is defined in moe_models.py itself for now as per previous iteration.
+# GpuSystemMonitor and AdaptiveRouter need to be imported/forward declared.
+from monitor import GpuSystemMonitor
+from kernelcostmodel import KernelCostModel
+# AdaptiveRouter is a forward declaration in SimpleMoELayer.
 # --- Expert Definitions ---
 
 class SimpleExpert(nn.Module):
     """
     A basic Feed-Forward Network acting as an MoE expert.
-    This will be used for initial kernel profiling.
+    Used for initial kernel profiling of standard operations.
     """
     def __init__(self, d_model: int, expert_id: int):
         super().__init__()
@@ -62,100 +34,168 @@ class SimpleExpert(nn.Module):
         return x
 
 class QuantizedExpert(nn.Module):
-    """
-    Simulated 4-bit Quantized Expert.
-    Weights are stored as packed INT8 (representing two 4-bit nibbles).
-    Includes explicit (PyTorch-based) dequantization in the forward pass
-    to make the dequantization overhead visible to profilers.
-    """
-    def __init__(self, d_model: int, expert_id: int):
-        super().__init__()
-        self.expert_id = expert_id
-        self.d_model = d_model
+    # ... (existing __init__ and parameters) ...
 
-        # Simulate 4-bit weights packed into int8
-        # Shape: (out_features, in_features / 2) because each byte holds two 4-bit values
-        # For fc1: (d_model * 2, d_model / 2)
-        self.fc1_weights_packed = nn.Parameter(
-            torch.randint(-8, 7, (d_model * 2, d_model // 2), dtype=torch.int8), requires_grad=False
-        )
-        # Scales are typically float16 in quantization schemes
-        self.fc1_scales = nn.Parameter(torch.randn(d_model * 2, 1, dtype=torch.float16), requires_grad=False)
-        self.fc1_bias = nn.Parameter(torch.randn(d_model * 2), requires_grad=True)
+    def _pack_weights(self):
+        """
+        Simulates quantization and packing of full-precision weights into uint8 buffers.
+        This method handles `self.quantization_bits` (2 or 4).
+        It maps signed integers to unsigned for storage, and applies MSB toggling concept for 4-bit.
+        """
+        # Ensure full precision weights are on CPU for packing, then move packed to GPU buffer later
+        fc1_weight_full_cpu = self.fc1_weight_full.data.cpu()
+        fc2_weight_full_cpu = self.fc2_weight_full.data.cpu()
 
-        # For fc2: (d_model, d_model) -> (d_model, d_model / 2) packed
-        self.fc2_weights_packed = nn.Parameter(
-            torch.randint(-8, 7, (d_model, d_model), dtype=torch.int8), requires_grad=False
-        )
-        self.fc2_scales = nn.Parameter(torch.randn(d_model, 1, dtype=torch.float16), requires_grad=False)
-        self.fc2_bias = nn.Parameter(torch.randn(d_model), requires_grad=True)
+        # Define min/max values for the target bit-width (signed)
+        min_val_signed = -(2**(self.quantization_bits - 1)) # e.g., -8 for 4-bit, -2 for 2-bit
+        max_val_signed = (2**(self.quantization_bits - 1)) - 1 # e.g., 7 for 4-bit, 1 for 2-bit
+
+        # --- FC1 Packing ---
+        # 1. Calculate scales (per-row, float16)
+        max_val_per_row_fc1, _ = fc1_weight_full_cpu.abs().max(dim=1, keepdim=True)
+        scales_fc1 = max_val_per_row_fc1 / (max_val_signed + 1e-5) # Add epsilon to avoid div by zero
+        self.fc1_scales.copy_(scales_fc1.to(torch.float16)) # Store FP16 scales
+
+        # 2. Quantize and clamp to signed integer range
+        quant_weights_fc1 = (fc1_weight_full_cpu / (self.fc1_scales.cpu() + 1e-5)).round().to(torch.int8)
+        quant_weights_fc1 = torch.clamp(quant_weights_fc1, min_val_signed, max_val_signed)
+
+        # 3. Pack into uint8 buffer based on bit-width
+        packed_buffer_fc1 = torch.zeros(self.fc1_weight_packed.numel(), dtype=torch.uint8)
+
+        if self.quantization_bits == 4:
+            # Each byte holds two 4-bit values. Example: byte = (high_nibble << 4) | low_nibble
+            # We map signed_val (-8 to 7) to unsigned_val (0 to 15) for storage: unsigned_val = signed_val + 8
+            # The order in the paper (w0, w16, w1, w17...) is for SIMD-aware packing, 
+            # here we do a simpler consecutive packing for simulation.
+            
+            # Reshape to (rows, cols/2, 2)
+            num_elements_per_byte = 8 // self.quantization_bits # 2 for 4-bit
+            quant_weights_reshaped = quant_weights_fc1.view(self.fc1_hidden_dim, -1, num_elements_per_byte)
+            
+            # Apply MSB toggling concept for efficient signed unpacking later (optional, but good for realism)
+            # If MSB is 0 (positive range), add 0x8. If MSB is 1 (negative range), subtract 0x8
+            # Or simpler: map -8 to 7 to 0 to 15 directly
+            # For simplicity, let's map -8 to 7 -> 0 to 15 for storage (add 8)
+            val0_unsigned = (quant_weights_reshaped[:, :, 0] + 8).to(torch.uint8)
+            val1_unsigned = (quant_weights_reshaped[:, :, 1] + 8).to(torch.uint8)
+            
+            packed_fc1_data = (val0_unsigned << 4) | (val1_unsigned & 0x0F)
+            packed_buffer_fc1.copy_(packed_fc1_data.flatten())
+
+        elif self.quantization_bits == 2:
+            # Each byte holds four 2-bit values. Example: byte = (v3 << 6) | (v2 << 4) | (v1 << 2) | v0
+            # Map signed_val (-2 to 1) to unsigned_val (0 to 3): unsigned_val = signed_val + 2
+            
+            num_elements_per_byte = 8 // self.quantization_bits # 4 for 2-bit
+            quant_weights_reshaped = quant_weights_fc1.view(self.fc1_hidden_dim, -1, num_elements_per_byte)
+
+            val0_unsigned = (quant_weights_reshaped[:, :, 0] + 2).to(torch.uint8)
+            val1_unsigned = (quant_weights_reshaped[:, :, 1] + 2).to(torch.uint8)
+            val2_unsigned = (quant_weights_reshaped[:, :, 2] + 2).to(torch.uint8)
+            val3_unsigned = (quant_weights_reshaped[:, :, 3] + 2).to(torch.uint8)
+
+            packed_fc1_data = (val0_unsigned << 6) | (val1_unsigned << 4) | (val2_unsigned << 2) | (val3_unsigned & 0x03)
+            packed_buffer_fc1.copy_(packed_fc1_data.flatten())
+
+        self.fc1_weight_packed.copy_(packed_buffer_fc1.to(self.fc1_weight_packed.device)) # Move to device
+
+        # --- FC2 Packing (similar logic) ---
+        weight_fp16 = self.fc2_weight_full.data.cpu().to(torch.float16)
+
+        max_val_per_row_fc2, _ = weight_fp16.abs().max(dim=1, keepdim=True)
+        scales_fc2 = max_val_per_row_fc2 / (max_val_signed + 1e-5)
+        self.fc2_scales.copy_(scales_fc2.to(torch.float16))
+
+        quant_weights_fc2 = (weight_fp16 / (self.fc2_scales.cpu() + 1e-5)).round().to(torch.int8)
+        quant_weights_fc2 = torch.clamp(quant_weights_fc2, min_val_signed, max_val_signed)
+
+        packed_buffer_fc2 = torch.zeros(self.fc2_weight_packed.numel(), dtype=torch.uint8)
+
+        if self.quantization_bits == 4:
+            num_elements_per_byte = 8 // self.quantization_bits
+            quant_weights_reshaped = quant_weights_fc2.view(self.fc2_output_dim, -1, num_elements_per_byte)
+            val0_unsigned = (quant_weights_reshaped[:, :, 0] + 8).to(torch.uint8)
+            val1_unsigned = (quant_weights_reshaped[:, :, 1] + 8).to(torch.uint8)
+            packed_fc2_data = (val0_unsigned << 4) | (val1_unsigned & 0x0F)
+            packed_buffer_fc2.copy_(packed_fc2_data.flatten())
+        elif self.quantization_bits == 2:
+            num_elements_per_byte = 8 // self.quantization_bits
+            quant_weights_reshaped = quant_weights_fc2.view(self.fc2_output_dim, -1, num_elements_per_byte)
+            val0_unsigned = (quant_weights_reshaped[:, :, 0] + 2).to(torch.uint8)
+            val1_unsigned = (quant_weights_reshaped[:, :, 1] + 2).to(torch.uint8)
+            val2_unsigned = (quant_weights_reshaped[:, :, 2] + 2).to(torch.uint8)
+            val3_unsigned = (quant_weights_reshaped[:, :, 3] + 2).to(torch.uint8)
+            packed_fc2_data = (val0_unsigned << 6) | (val1_unsigned << 4) | (val2_unsigned << 2) | (val3_unsigned & 0x03)
+            packed_buffer_fc2.copy_(packed_fc2_data.flatten())
+        
+        self.fc2_weight_packed.copy_(packed_buffer_fc2.to(self.fc2_weight_packed.device)) # Move to device
 
     def _dequantize_and_unpack(self, packed_weights: torch.Tensor, scales: torch.Tensor,
-                               d_out: int, d_in: int) -> torch.Tensor:
+                               d_out: int, d_in: int, quantization_bits: int) -> torch.Tensor:
         """
         Simulates the dequantization and unpacking process on the GPU using PyTorch ops.
-        This is a simplified version of the Arm paper's "fast decompression path."
-        It will generate underlying CUDA kernels for bitwise ops, shifts, etc.
+        Handles both 4-bit and 2-bit packing formats as defined in _pack_weights.
         """
-        # Ensure packed_weights are on the same device as scales and will be processed.
-        packed_weights = packed_weights.to(scales.device)
+        packed_weights = packed_weights.to(scales.device) # Ensure packed_weights are on GPU
 
-        # 1. Unpack nibbles:
-        # Assuming high nibble (bits 4-7) and low nibble (bits 0-3) are packed per byte
-        low_nibbles = (packed_weights & 0x0F).to(torch.int8)
-        high_nibbles = (packed_weights >> 4).to(torch.int8)
+        unpacked_tensor = torch.empty(d_out, d_in, device=scales.device, dtype=scales.dtype)
 
-        # 2. Restore signedness (original values were -8 to 7, stored as 0-15)
-        # If value > 7, then it's a negative number (e.g., 15 was -1, 8 was -8)
-        low_nibbles = torch.where(low_nibbles > 7, low_nibbles - 16, low_nibbles)
-        high_nibbles = torch.where(high_nibbles > 7, high_nibbles - 16, high_nibbles)
+        if quantization_bits == 4:
+            # Unpack two 4-bit values from each uint8 byte
+            # These are currently 0-15. Subtract 8 to get -8 to 7.
+            high_nibbles_unsigned = (packed_weights >> 4).to(torch.int8)
+            low_nibbles_unsigned = (packed_weights & 0x0F).to(torch.int8)
 
-        # 3. Interleave and reconstruct the full (d_out, d_in) float tensor
-        # This is simplified. The paper talks about SIMD-aware packing/interleaving.
-        # This reconstruction should mirror how weights were packed offline.
-        # For simplicity, let's assume `in_features` is correctly restored from `d_in`.
-        # The unpacked tensor will have shape (d_out, d_in).
-        unpacked_weights = torch.empty(d_out, d_in, device=packed_weights.device, dtype=scales.dtype)
-        # Fill even columns with high_nibbles, odd columns with low_nibbles
-        # This assumes a packing scheme where 2 nibbles from one original weight are not in the same byte.
-        # If each byte contains 2 separate weights, this is how you'd fill it.
-        # This specific interleaving depends on your chosen packing format.
-        # A more direct interpretation of Arm paper: if a byte has w0, w16, then w0 goes to col 0, w16 to col 16
-        # Here we do a generic interleave.
-        unpacked_weights[:, 0::2] = high_nibbles.float() # Assuming high_nibbles correspond to even columns
-        unpacked_weights[:, 1::2] = low_nibbles.float()  # Assuming low_nibbles correspond to odd columns
+            high_nibbles_signed = high_nibbles_unsigned - 8
+            low_nibbles_signed = low_nibbles_unsigned - 8
+            
+            num_packed_elements_per_row = d_in // 2
+            high_nibbles_reshaped = high_nibbles_signed.view(d_out, num_packed_elements_per_row)
+            low_nibbles_reshaped = low_nibbles_signed.view(d_out, num_packed_elements_per_row)
+            
+            # Fill into the target unpacked_tensor, interleaving columns
+            unpacked_tensor[:, 0::2] = high_nibbles_reshaped.float()
+            unpacked_tensor[:, 1::2] = low_nibbles_reshaped.float()
 
-        # 4. Apply scales
-        # Scales are (d_out, 1) and will broadcast. Convert scales to unpacked_weights' dtype (float32 assumed for matmul)
-        return unpacked_weights * scales.to(unpacked_weights.dtype)
+        elif quantization_bits == 2:
+            # Unpack four 2-bit values from each uint8 byte
+            # These are currently 0-3. Subtract 2 to get -2 to 1.
+            val3_unsigned = (packed_weights >> 6) & 0x03
+            val2_unsigned = (packed_weights >> 4) & 0x03
+            val1_unsigned = (packed_weights >> 2) & 0x03
+            val0_unsigned = (packed_weights & 0x03)
 
+            val3_signed = val3_unsigned.to(torch.int8) - 2
+            val2_signed = val2_unsigned.to(torch.int8) - 2
+            val1_signed = val1_unsigned.to(torch.int8) - 2
+            val0_signed = val0_unsigned.to(torch.int8) - 2
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # --- First Linear Layer (FC1) ---
-        # Explicit dequantization step to make its kernels visible
-        fc1_weights_dequant = self._dequantize_and_unpack(
-            self.fc1_weights_packed, self.fc1_scales,
-            self.fc1_weights_packed.shape[0], self.d_model
-        )
-        x = F.linear(x, fc1_weights_dequant, self.fc1_bias)
+            num_packed_elements_per_row = d_in // 4
+            val3_reshaped = val3_signed.view(d_out, num_packed_elements_per_row)
+            val2_reshaped = val2_signed.view(d_out, num_packed_elements_per_row)
+            val1_reshaped = val1_signed.view(d_out, num_packed_elements_per_row)
+            val0_reshaped = val0_signed.view(d_out, num_packed_elements_per_row)
 
-        # --- ReLU Activation ---
-        x = F.relu(x)
+            # Fill into the target unpacked_tensor, interleaving columns
+            unpacked_tensor[:, 0::4] = val3_reshaped.float()
+            unpacked_tensor[:, 1::4] = val2_reshaped.float()
+            unpacked_tensor[:, 2::4] = val1_reshaped.float()
+            unpacked_tensor[:, 3::4] = val0_reshaped.float()
 
-        # --- Second Linear Layer (FC2) ---
-        fc2_weights_dequant = self._dequantize_and_unpack(
-            self.fc2_weights_packed, self.fc2_scales,
-            self.fc2_weights_packed.shape[0], self.d_model * 2 # fc2's input feature dim
-        )
-        x = F.linear(x, fc2_weights_dequant, self.fc2_bias)
-        return x
+        else:
+            raise ValueError(f"Dequantization for {quantization_bits}-bit not implemented.")
+
+        # Apply scales (scales are [d_out, 1], will broadcast)
+        return unpacked_tensor * scales.to(unpacked_tensor.dtype)
 
 # --- MoE Layer and Block Definitions ---
+# These remain largely the same, but with correct imports and expert instantiation.
 
 class SimpleMoELayer(nn.Module):
     def __init__(self, gate: nn.Module, experts: nn.ModuleList, top_k: int,
                  kernel_cost_model: KernelCostModel, # Added for Phase 2+
-                 gpu_system_monitor, # Added for Phase 2+ (forward declaration)
+                 gpu_system_monitor: GpuSystemMonitor, # Added for Phase 2+
                  routing_strategy: str = "baseline"):
         super().__init__()
         self.gate = gate
@@ -163,15 +203,13 @@ class SimpleMoELayer(nn.Module):
         self.n_experts = len(experts)
         self.top_k = top_k
         self.kernel_cost_model = kernel_cost_model
-        self.gpu_system_monitor = gpu_system_monitor # Will be used by router
+        self.gpu_system_monitor = gpu_system_monitor
         
         # We need to explicitly pass KernelCostModel and GpuSystemMonitor to the router
-        # Router definition will be in routers.py, so a forward declaration/placeholder
-        # or import is needed. For now, we assume it's available.
-        # From iteration 3 onwards, AdaptiveRouter will use these.
+        # Router definition will be in routers.py, so an import is needed.
         self.router = AdaptiveRouter(self.n_experts, top_k,
                                      kernel_cost_model, gpu_system_monitor, # Pass the new dependencies
-                                     strategy=routing_strategy)
+                                     routing_strategy)
         
         self.expert_cumulative_timings_ms: Dict[int, float] = {} # Total time spent by each expert
         self.metrics_buffer: Dict[str, Any] = {} # To store per-batch metrics for logging
@@ -183,7 +221,7 @@ class SimpleMoELayer(nn.Module):
         gate_logits = self.gate(x)
         
         # Pass num_tokens to router (needed for kernel_cost_model lookup based on batch_size)
-        top_k_indices, top_k_probs = self.router(gate_logits, num_tokens) 
+        top_k_indices, top_k_probs, _ = self.router(gate_logits, num_tokens) # Router now returns 3 things
         gate_probs_all = F.softmax(gate_logits, dim=-1)
 
         # Aux loss for load balancing (standard MoE)
@@ -237,9 +275,10 @@ class SimpleMoELayer(nn.Module):
 class MoETransformerBlock(nn.Module):
     def __init__(self, d_model: int, num_experts: int, top_k: int,
                  kernel_cost_model: KernelCostModel, # Added
-                 gpu_system_monitor, # Added
+                 gpu_system_monitor: GpuSystemMonitor, # Added
                  routing_strategy: str = "baseline",
-                 expert_type: str = "simple"): # New arg to select expert type
+                 expert_type: str = "simple", # New arg to select expert type
+                 quantization_bits: int = 4): # New arg for QuantizedExpert
         super().__init__()
         self.d_model = d_model
         self.num_experts = num_experts
@@ -248,13 +287,15 @@ class MoETransformerBlock(nn.Module):
         self.gpu_system_monitor = gpu_system_monitor
         self.routing_strategy = routing_strategy
         self.expert_type = expert_type
+        self.quantization_bits = quantization_bits
 
         self.gate = nn.Linear(d_model, num_experts)
 
         if expert_type == "simple":
             experts = nn.ModuleList([SimpleExpert(d_model, i) for i in range(num_experts)])
         elif expert_type == "quantized":
-            experts = nn.ModuleList([QuantizedExpert(d_model, i) for i in range(num_experts)])
+            # Pass d_model as input_dim and output_dim, hidden_dim as d_model*2 for the expert
+            experts = nn.ModuleList([QuantizedExpert(d_model, i, quantization_bits=quantization_bits) for i in range(num_experts)])
         else:
             raise ValueError(f"Unknown expert type: {expert_type}")
 
@@ -289,19 +330,17 @@ def compute_energy_loss(selected_expert_indices: torch.Tensor, top_k_probs: torc
         effective_kernel_batch_size = 1 
 
         for j in range(token_expert_indices.shape[0]): # For each of the top_k experts selected for this token
-            expert_id = int(token_expert_indices[j].item())
+            # expert_id = int(token_expert_indices[j].item()) # expert_id is not used in cost lookup here
             prob = token_expert_probs[j].item() # Probability of this token going to this expert
 
-            # Sum the predicted costs of constituent kernels for this expert
-            # We assume a fixed structure: fc1, relu, fc2
-            # The d_model here is the *base* d_model for the expert (input to fc1)
-            # The KernelCostModel's get_cost method should handle mapping d_model_base to op-specific dimensions.
+            # Sum the predicted costs of constituent kernels for ONE generic expert (assuming experts are homogeneous)
+            # --- These op_type strings MUST match what you profile in expert_kernel_profiler.py ---
             
             expert_predicted_energy_cost_for_token = 0.0
             
-            # --- IMPORTANT: These op_type strings MUST match what you profile in expert_kernel_profiler.py ---
-            # And the d_model values passed to get_cost must align with how you profiled them.
-            # get_cost will map d_model_base to the actual op dimensions.
+            op_cost_dequant = kernel_cost_model.get_cost("dequant_unpack_op", effective_kernel_batch_size)
+            expert_predicted_energy_cost_for_token += op_cost_dequant.get("energy_joules", 0.0)
+
             op_cost_fc1 = kernel_cost_model.get_cost("linear_fc1", effective_kernel_batch_size)
             expert_predicted_energy_cost_for_token += op_cost_fc1.get("energy_joules", 0.0)
 
