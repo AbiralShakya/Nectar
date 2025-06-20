@@ -1,0 +1,16 @@
+part 1: 
+    algorithmic overview of hardware aware dynamic MoE routing
+
+    we introduce a framework that leverages real time gpu telemetry, thermal signals, and kernel cost models to adaptively route token in 
+        a mixture of experts at test time (no retraining requried). 
+
+
+part 2: 
+    theoretical foundations & cost model design
+        we dive into why per expert operatoins, linear layers, activations, attenio have predictable energy / thermal footprints, how to build 
+            lightweight interpolation cost models, and how thermal strate perturbs latency and power. We prove that undder mild assumptions about GPU powero curbges
+                your router's smulti objective optimzation remians convex and thus easily solvable in real time
+
+part 3: 
+    deep ddive on gpu kernels and triton integration
+        cot aware kernel design

@@ -1,4 +1,3 @@
-# src/moe_models.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -35,7 +34,30 @@ class SimpleExpert(nn.Module):
         return x
 
 class QuantizedExpert(nn.Module):
-    # ... (existing __init__ and parameters) ...
+    def __init__(self, d_model: int, expert_id: int, quantization_bits: int):
+        super().__init__()
+        self.expert_id = expert_id
+        self.quantization_bits = quantization_bits
+        self.fc1_hidden_dim = d_model * 2
+        self.fc2_output_dim = d_model
+        # full‐precision weights
+        self.fc1_weight_full = nn.Parameter(torch.randn(self.fc1_hidden_dim, d_model))
+        self.fc2_weight_full = nn.Parameter(torch.randn(d_model, self.fc1_hidden_dim))
+        # packed buffers (will be filled by _pack_weights)
+        self.fc1_weight_packed = nn.Parameter(torch.empty(self.fc1_hidden_dim * d_model // (8//quantization_bits), dtype=torch.uint8), requires_grad=False)
+        self.fc2_weight_packed = nn.Parameter(torch.empty(d_model * self.fc1_hidden_dim // (8//quantization_bits), dtype=torch.uint8), requires_grad=False)
+        # per‐row scales
+        self.fc1_scales = nn.Parameter(torch.empty(self.fc1_hidden_dim, 1, dtype=torch.float16), requires_grad=False)
+        self.fc2_scales = nn.Parameter(torch.empty(d_model, 1, dtype=torch.float16), requires_grad=False)
+        self._pack_weights()
+
+    def forward(self, x):
+        W1 = self._dequantize_and_unpack(self.fc1_weight_packed, self.fc1_scales, self.fc1_hidden_dim, x.size(-1), self.quantization_bits)
+        W2 = self._dequantize_and_unpack(self.fc2_weight_packed, self.fc2_scales, x.size(-1), self.fc1_hidden_dim, self.quantization_bits)
+        x = F.linear(x, W1)
+        x = F.gelu(x)
+        x = F.linear(x, W2)
+        return x
 
     def _pack_weights(self):
         """
