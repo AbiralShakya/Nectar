@@ -12,5 +12,30 @@ part 2:
                 your router's smulti objective optimzation remians convex and thus easily solvable in real time
 
 part 3: 
-    deep ddive on gpu kernels and triton integration
-        cot aware kernel design
+    deep dive on gpu kernels and triton integration
+        cost aware kernel design
+
+Part 1: Algorithmic Overview of Hardware-Aware Dynamic MoE Routing
+
+"adaptively route token in a mixture of experts at test time (no retraining required)": This immediately places your work squarely within the TTA field.
+The survey's "Inference Adaptation" category (Section 3.2) is particularly relevant, as it describes methods that "estimate model parameters with a small number of samples using just a feedforward pass at test time, without any back-propagation." Your dynamic routing, informed by real-time signals, functions as an "inference adaptation" mechanism for the MoE's routing.
+The survey also mentions "Model Adaptation" (Section 3.1) which adjusts source-trained parameters. While you're not fine-tuning the expert weights, you are dynamically adjusting how tokens interact with experts, which is a form of functional adaptation at test time.
+"leverages real-time GPU telemetry, thermal signals, and kernel cost models":
+This is where your work goes "beyond model adaptation" in a novel way that the survey hints at as an emerging opportunity. While the survey discusses adapting based on data distribution shifts, you're adapting based on hardware distribution shifts (e.g., thermal state, utilization).
+The concept of "Normalization Adaptation" (Section 3.3) in the survey, which adjusts normalization statistics based on target data statistics, is a conceptual parallel. You're adjusting routing based on hardware statistics, extending the idea of dynamic real-time parameter adjustment.
+Your use of "cost models" to inform routing decisions directly addresses the survey's constant emphasis on "efficiency" and "robustness" in TTA (Section 8.2). You're building a mechanism to ensure efficient and robust operation despite changing hardware conditions, which is a crucial practical concern for deploying large models like MoEs.
+Part 2: Theoretical Foundations & Cost Model Design
+
+"why per expert operations, linear layers, activations, attention have predictable energy / thermal footprints, how to build lightweight interpolation cost models":
+This directly supports the feasibility of your "real-time" adaptation. The survey frequently discusses the need for TTA methods to be "computationally efficient" (e.g., in discussions of Model vs. Inference Adaptation). Your cost models provide the foundation for this efficiency in a hardware-aware context.
+The idea of "lightweight interpolation cost models" is in line with the survey's discussion of "lightweight adaptation strategies" (Section 8.2, under "Efficiency and robustness").
+"how thermal state perturbs latency and power":
+This is a critical real-world "distribution shift" that your work uniquely addresses within the TTA framework. The survey notes that "complex and unpredictable discrepancies can arise between training and test data distributions, such as noisy sensory recordings during inference, an abrupt change in weather conditions..." Your work provides a concrete example of such a discrepancy from the hardware side and a mechanism to mitigate it.
+This directly ties into the survey's discussion of "Dynamic inference" (Section 5.2), which aims to handle "continually changing environments with various distributions" and "catastrophic forgetting." Your method aims to prevent performance degradation due to changing hardware environments.
+"We prove that under mild assumptions about GPU power curves your router's multi-objective optimization remains convex and thus easily solvable in real time":
+This is a strong theoretical contribution that directly addresses the survey's highlighted "Emerging Research Opportunity: Theoretical analysis" (Section 8.1). The survey states, "most approaches are empirical and emphasize technical innovations. They often lack a deeper theoretical foundation." Your convexity proof provides exactly this kind of theoretical underpinning for real-time solvability, which is vital for practical deployment. It justifies why your router can operate in "real-time," a critical aspect of TTA.
+Part 3: Deep Dive on GPU Kernels and Triton Integration
+
+"cost aware kernel design":
+This is the implementation layer that enables the fine-grained control needed for hardware-aware routing. While the survey operates at a higher conceptual level (what to adapt), your "cost-aware kernel design" is the how that makes the real-time, hardware-informed decisions effective.
+It reinforces the goal of "Efficiency and robustness" in TTA (Section 8.2), by optimizing the lowest-level computational units to be aware of their resource consumption. Triton, as a tool for high-performance custom kernels, is perfectly suited for this goal.
