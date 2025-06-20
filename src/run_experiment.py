@@ -6,16 +6,17 @@ import torch
 import torch.nn as nn
 from datetime import datetime
 import time
-
+from moe_models import MoETransformerBlock, compute_energy_loss
+from kernelcostmodel import KernelCostModel
 # Ensure src directory is in PYTHONPATH for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 # Import all necessary components
 from moe_models import MoETransformerBlock, compute_energy_loss, KernelCostModel
-from monitors import GpuSystemMonitor
-from routers import RoutingStrategy # Corrected import for RoutingStrategy
+from routers import RoutingStrategy, GpuSystemMonitor
 from data_utils import DataLoaderManager
 from metrics_logger import MetricsLogger
+from routers import Gpu
 
 
 def run_experiment_phase(args, model: MoETransformerBlock, dataloader_manager: DataLoaderManager,

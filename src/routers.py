@@ -14,6 +14,7 @@ import logging
 from enum import Enum
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from thermal_signal import SysState, ThermalSignalGenerator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -463,6 +464,10 @@ class AdaptiveRouter(nn.Module):
         self.num_experts = num_experts
         self.top_k = top_k
         self.kernel_cost_model = kernel_cost_model
+
+        self.alpha_energy = 0.1
+        self.beta_latency = 0.1
+
         self.gpu_system_monitor = gpu_system_monitor
         self.strategy = RoutingStrategy(strategy) if isinstance(strategy, str) else strategy
         self.device_topology = device_topology or {}

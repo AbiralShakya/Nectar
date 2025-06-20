@@ -11,6 +11,7 @@ from routers import AdaptiveRouter
 # GpuSystemMonitor and AdaptiveRouter need to be imported/forward declared.
 from monitor import GpuSystemMonitor
 from kernelcostmodel import KernelCostModel
+from routers import KernelCostModel, GpuSystemMonitor, AdaptiveRouter, RoutingStrategy
 # AdaptiveRouter is a forward declaration in SimpleMoELayer.
 # --- Expert Definitions ---
 

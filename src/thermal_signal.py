@@ -5,6 +5,15 @@ import torch.nn.functional as F
 from typing import Dict, Tuple, Any
 from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
 import pynvml
+from dataclasses import dataclass
+
+@dataclass
+class SysState:
+    temperature: float       # GPU temperature in °C
+    power: float             # GPU power draw in Watts
+    utilization: float       # GPU utilization (0–100%)
+    thermal_state: str       # "cool", "warm", "hot", or "critical"
+    expert_priorities: Dict[str, float]  # penalty weights per expert
 
 class ThermalSignalGenerator:
     def __init__(self, device_id=0, update_interval=0.5):
