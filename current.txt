@@ -1,0 +1,116 @@
+Work Currently Done
+
+The current work has focused on establishing the core components for real-time hardware-aware routing and the initial steps towards understanding and modeling GPU kernel performance.
+
+Framework for Hardware-Aware Dynamic MoE Routing (Part 1 Foundation)
+
+Core Concept: The project introduces an AdaptiveRouter that makes dynamic routing decisions for MoE layers based on hardware characteristics. This adaptation occurs at test time, avoiding the computational expense of full model retraining.
+Integration with MoE: The SimpleMoELayer and MoETransformerBlock are designed to integrate this AdaptiveRouter, passing it critical information like gate logits and current batch size.
+Routing Strategies: The AdaptiveRouter supports various strategies, including BASELINE (standard routing), STATIC_OPTIMAL (routing optimized using pre-computed cost models), and KERNEL_AWARE_TTHA (Test-Time Hardware-Efficiency Adaptation). This TTHA strategy is designed to adapt routing based on real-time hardware feedback.
+Hardware Telemetry Acquisition: A GpuSystemMonitor runs in a background thread to continuously collect real-time GPU telemetry, including temperature, power usage, GPU utilization, and memory utilization. This provides the critical real-time signals necessary for adaptive routing.
+Cost Model Integration: The AdaptiveRouter takes a KernelCostModel as an input, using it to compute biases for routing decisions, aiming to select experts that are more favorable given current hardware conditions and performance objectives.
+Initial Kernel Cost Model Design & Profiling Setup (Part 2 & 3 Foundation)
+
+KernelCostModel: A class is implemented to store and provide lookup for profiled kernel costs, including latency, energy consumption, and thermal impact. It includes logic for linear interpolation to estimate costs for batch sizes not directly profiled.
+Expert Operation Breakdown: The SimpleExpert and QuantizedExpert models break down a typical expert's forward pass into constituent operations like linear layers (fc1, fc2), activation functions (relu, gelu), and a simulated dequant_unpack_op for the quantized expert. This modularity allows for granular cost modeling.
+Automated Offline Profiling: The expert_kernel_profiler.py script automates the process of isolating and profiling these individual expert operations using NVIDIA's nsys and ncu tools. This generates raw, detailed GPU-level performance, power, and thermal traces.
+Profiler Output Parsing: The parse_profiler_output.py script is developed to parse the raw nsys SQLite database files, extracting key metrics like kernel latency, energy consumption, and average temperature during kernel execution. This parsed data is used to populate the KernelCostModel.
+Energy Loss Objective: A compute_energy_loss function is integrated into the MoE training loop. This function uses the KernelCostModel to estimate the predicted energy consumption based on the router's expert selections, allowing for explicit optimization towards energy efficiency during model training/adaptation.
+TTHA Adapter & Optimization Loop (Part 1 - Adaptive Core)
+
+TTHAAdapter Module: An nn.Module is defined within routers.py to act as a trainable component that learns to produce dynamic routing biases based on expert cost features and real-time hardware metrics. It includes layers like MultiheadAttention, Linear, LayerNorm, and GELU to process heterogeneous inputs.
+Multi-Objective TTHA Update: The update_ttha method in AdaptiveRouter performs an online optimization step for the TTHAAdapter. This optimization minimizes a combined loss function that penalizes deviations from target power, target temperature, and a baseline latency, while also rewarding throughput. This is done via AdamW optimizer and CosineAnnealingWarmRestarts scheduler. This implements the "adaptive optimization" aspect of the router.
+History Logging: The MetricsLogger collects a wide range of data, including hardware stats, expert usage, and TTHA loss components, into a CSV file for detailed analysis.
+Next Steps & Everything in Detail
+
+The next steps involve crucial implementation, empirical validation, and theoretical formalization to fulfill the project outline's objectives.
+
+Phase 1: Deep Dive on GPU Kernels and Triton Integration (Part 3)
+
+This phase focuses on actual "cost-aware kernel design" by leveraging Triton, moving beyond just profiling to actively optimizing critical MoE operations at the GPU level.
+
+Implement Fused Dequantized Linear Kernel in Triton:
+
+Goal: Replace the separate _dequantize_and_unpack and F.linear operations in QuantizedExpert with a single, highly optimized custom Triton kernel. This addresses a key performance bottleneck, especially for quantized models.
+Details:
+Create src/triton_kernels.py.
+Develop a @triton.jit kernel (e.g., fused_dequant_linear_kernel) that takes packed quantized weights, scales, and input activations.
+Implement "Tile Packing": Within the kernel, unpack the quantized bits into float16 or float32 values. Crucially, as highlighted by "Chipmunk," ensure these unpacked values are arranged in shared memory as dense, contiguous blocks suitable for direct consumption by Tensor Cores in the matrix multiplication step. This is a fundamental technique to maintain high GPU utilization despite the initial "sparsity" of packed bits.
+Perform the matrix multiplication (tl.dot) using the unpacked and packed weights.
+Optionally, fuse the activation function (e.g., GELU for fc1) directly into this kernel to further reduce memory I/O and kernel launch overheads, as demonstrated in Chipmunk's mlp_csp_mm1_fp8.py.
+Integrate: Modify QuantizedExpert.forward in moe_models.py to call this new Triton kernel.
+Justification: This directly implements "cost-aware kernel design" and "Triton integration," aiming for substantial latency and energy reductions from combining multiple operations into one optimized GPU kernel.
+Implement Custom Top-K Routing Kernel in Triton:
+
+Goal: Optimize the top-k selection in the AdaptiveRouter's forward pass, as torch.topk can introduce overhead, especially for small batch sizes or very large numbers of experts. "Chipmunk" explicitly mentions optimizing top-k.
+Details:
+Add another @triton.jit kernel to src/triton_kernels.py (e.g., custom_topk_kernel).
+This kernel will take gate_logits and the desired top_k value.
+The implementation will involve highly parallel reduction and selection logic on the GPU, potentially using shared memory and atomic operations, or specialized sorting networks for efficient top-k identification.
+Integrate: Update AdaptiveRouter.forward in routers.py to use this custom Triton top-k kernel.
+Justification: Reduces the computational overhead of the routing decision itself, ensuring that the adaptive mechanism doesn't negate performance gains.
+Comprehensive Kernel Profiling and Cost Model Update:
+
+Goal: Empirically validate the efficiency gains of your new Triton kernels and update the KernelCostModel with accurate performance data.
+Details:
+Run expert_kernel_profiler.py to generate new nsys and ncu traces for the Triton-optimized dequant_unpack_op (now representing your fused dequantized linear) and your custom top-k operation. Profile across a wide range of relevant d_model and batch sizes.
+Execute parse_profiler_output.py to process these new traces and update kernel_cost_model.json.
+Justification: Accurate cost models are paramount for the AdaptiveRouter to make intelligent, hardware-aware decisions. This step grounds your theoretical models in real-world GPU performance.
+Phase 2: Comprehensive Experimentation & Evaluation (Part 1 & Overall)
+
+This phase involves running controlled experiments to quantify the benefits of your hardware-aware dynamic routing strategies.
+
+Baseline and Static Optimal Characterization:
+
+Goal: Establish performance benchmarks for non-adaptive and statically-optimized routing.
+Details: Use run_experiment.py to run:
+BASELINE Strategy: Measure latency, throughput, energy, and thermal behavior with standard, unbiased routing.
+STATIC_OPTIMAL Strategy: Evaluate performance using the refined KernelCostModel to bias routing without real-time adaptation. This demonstrates the upper bound of static optimization.
+Metrics: Collect detailed metrics using MetricsLogger (latency, throughput, GPU power/temp, expert usage counts).
+Kernel-Aware Test-Time Hardware-Efficiency Adaptation (TTHA) Evaluation:
+
+Goal: Quantify the benefits of real-time adaptive routing in managing hardware constraints.
+Details: Run run_experiment.py with the KERNEL_AWARE_TTHA strategy. Introduce simulated or real hardware load variations during the experiment (e.g., through other background GPU tasks or by changing workload types that stress different hardware components). Observe how the TTHAAdapter adjusts routing biases in response.
+Metrics: Pay close attention to:
+Hardware Constraint Adherence: How closely does the system maintain target power and temperature? How does thermal state vary compared to baseline?
+Performance vs. Constraint Trade-offs: Is there a performance hit for tighter power/thermal envelopes?
+Router Adaptation Dynamics: Analyze ttha_power_loss, ttha_temp_loss, and ttha_latency_penalty from the router's history.
+Expert Load Balancing: How does the router dynamically distribute tokens to experts under varying hardware stress?
+Quantized Expert Performance Evaluation:
+
+Goal: Compare the efficiency of your custom Triton-optimized QuantizedExpert against the SimpleExpert or a non-optimized QuantizedExpert (if you maintain a reference).
+Details: Run the above experiments using both simple and quantized expert types to clearly show the impact of the quantization and the Triton optimizations.
+Metrics: Focus on throughput, energy consumption, and peak memory usage.
+Scaling and Robustness Testing:
+
+Goal: Assess the framework's performance under varying scales and robustness to unseen conditions.
+Details:
+Workload Variety: Test with standard, high_complexity, small_batch, and large_batch workloads. High-complexity workloads (e.g., higher variance inputs) could represent inputs that might lead to more dynamic expert choices.
+d_model and num_experts Scaling: Experiment with different model dimensions and number of experts to understand how the system scales.
+GPU Utilization Analysis: Correlate router decisions with actual GPU utilization (SM, memory controller) to understand if your biases are effectively guiding resource allocation.
+Phase 3: Theoretical Foundations & Cost Model Design (Part 2 Formalization)
+
+This phase involves articulating the mathematical underpinnings and validating the assumptions made about your cost models and router's optimization.
+
+Formalize Multi-Objective Optimization Problem:
+
+Goal: Clearly define the objective function that your AdaptiveRouter is minimizing (or maximizing).
+Details: Express the combined loss function (task loss, auxiliary load balancing loss, energy loss, TTHA specific losses like power/temp/latency penalties, throughput bonus) mathematically. Identify the decision variables (expert assignment probabilities/biases).
+Characterize Cost Model Functions and Assumptions:
+
+Goal: Explain the mathematical form of your KernelCostModel (linear interpolation, factors for thermal/power perturbation).
+Details: Articulate the "mild assumptions about GPU power curves" and other hardware behaviors that enable the predictability of costs and the convexity of the optimization. For example, are power consumption and latency assumed to be piecewise linear or certain types of concave/convex functions within your operating range?
+Convexity Proof:
+
+Goal: Prove that your router's multi-objective optimization problem is convex and therefore efficiently solvable in real-time.
+Details: This is a rigorous mathematical exercise. You will need to show that:
+The objective function is a convex function.
+The feasible set (constraints on expert selection) is a convex set.
+This might involve showing that each component of your loss function (e.g., power loss term, temperature loss term, latency penalty) is convex, and that their weighted sum (with non-negative weights) remains convex. This is the "powerful theoretical guarantee" mentioned in your outline.
+Expected Outcomes:
+
+A functional hardware-aware dynamic MoE routing framework.
+Empirical evidence demonstrating improved energy efficiency, thermal management, and/or performance under hardware constraints compared to baseline and static routing strategies.
+Optimized GPU kernels (e.g., for dequantization, top-k) showcasing tangible speedups and efficiency gains.
+A theoretically sound justification for the real-time solvability of the adaptive routing problem.
+A comprehensive research write-up detailing the framework, methodology, results, and theoretical contributions.
