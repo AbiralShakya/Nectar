@@ -5,3 +5,31 @@ The escalating energy consumption of large-scale machine learning models, partic
 Our central hypothesis is that TTT can serve as a dynamic controller for model behavior under changing hardware and input conditions, guiding expert routing, computation depth, and precision on-the-fly without requiring full model re-training. We propose incorporating an explicit energy cost (estimated from real-time GPU power draw and expert-wise profiling) into the TTT objective, allowing the model to dynamically balance task performance with energy efficiency. This enables our system to: (1) adapt expert selection based on thermal budgets or power caps, (2) modulate computational pathways according to input complexity, and (3) gracefully degrade performance under hardware stress.
 
 We demonstrate a practical system implementation with hooks for pynvml-based GPU profiling and provide a modular TTT component that leverages entropy minimization and selective parameter updates (e.g., router weights, BatchNorm stats). Our evaluation will showcase the trade-offs between accuracy, energy consumption (Joules/token, EDP), and throughput under various domain shifts and simulated hardware constraints. This work offers a crucial step towards building truly adaptive and energy-sustainable large-scale AI systems, providing both practical deployment strategies and interpretable insights into power-aware model behavior.
+
+
+
+We propose a hardware-adaptive MoE inference stack that integrates real-time GPU telemetry, expert profiling, and cost-model-driven routing to improve energy efficiency and thermal stability under dynamic workloads. We design routing controllers, compile-time abstractions, and runtime scheduling policies that co-optimize for accuracy, latency, and hardware health.
+
+
+
+How can real-time GPU telemetry and kernel-level profiling be integrated into the routing function of Mixture-of-Experts models to enable dynamic, energy-efficient, and thermally-stable inference under variable system conditions?
+    Goal: Create a system-aware MoE stack that adapts routing using telemetry (G(x, s)).
+    Scope: Integrates kernel cost models, Triton-based expert specialization, and thermal-aware policies.
+
+
+Can test-time training using telemetry-augmented losses improve inference-time routing decisions in Mixture-of-Experts models, enabling adaptation to shifting computational budgets, thermal constraints, and input distributions?
+    Goal: Fine-tune routing on-the-fly using energy-aware and thermal-penalized objectives.
+    Scope: Extends traditional TTT to system-performance domains.
+
+3. Cost Model Design
+What telemetry features and architectural abstractions are most predictive of latency, power, and thermal behavior for individual MoE experts across diverse workloads and GPU architectures?
+Goal: Build and benchmark learned + analytic cost models per expert.
+Scope: Relates directly to Triton and nsys/ncu output; supports multi-objective routing.
+4. Kernel Specialization + Scheduling
+How can compiler frameworks like Triton be extended or leveraged to support real-time kernel adaptation and persistent scheduling for dynamically routed expert models under changing hardware conditions?
+Goal: Investigate tradeoffs between persistent kernel fusion (e.g., FlashDMoE) and dynamic expert reconfiguration.
+Scope: Explore warp/block/tile reparameterization based on system feedback.
+5. Performance-Energy-Accuracy Tradeoff Frontier
+What are the fundamental tradeoffs between model accuracy, inference latency, energy usage, and thermal stability in hardware-adaptive MoE systems, and how can these be optimized during both training and deployment?
+Goal: Establish Pareto curves over multiple objectives.
+Scope: Evaluate under constrained runtime environments (e.g., thermally limited datacenter nodes, edge GPUs).

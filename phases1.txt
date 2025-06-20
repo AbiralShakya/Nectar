@@ -1,0 +1,57 @@
+🔧 Phase 1: Core Integration of Cost Model + Telemetry-Aware Routing
+
+✅ Step 1: Integrate KernelCostModel into routers.py
+Modify the routing function (e.g., AdaptiveRouter.forward) to call:
+cost_output = kernel_cost_model.predict(expert_id, input_shape, system_state)
+Use predicted cost (latency, energy) to adjust routing scores or top-k selection.
+File edits:
+
+routers.py: main integration
+kernelcostmodel.py: ensure it supports predict(...)
+thermal_signal.py or monitor.py: pass in SysState (temperature, power, etc.)
+✅ Step 2: Enable telemetry capture and routing context
+In run_experiment.py, initialize ThermalSignalGenerator or GpuSystemMonitor.
+Periodically sample GPU state and forward it into the router.
+sys_state = thermal_signal.get_current_state()
+outputs = model(x, sys_state=sys_state)
+File edits:
+
+thermal_signal.py or monitor.py: create a SysState object
+moe_models.py: pass telemetry signal to router
+routers.py: use sys_state inside gating logic
+✅ Step 3: Implement Telemetry-Aware Routing Logic
+Inside AdaptiveRouter:
+
+Add temperature or power-sensitive scoring:
+scores -= alpha * cost_output.energy + beta * cost_output.latency
+Optionally implement "expert masking" if temp > threshold.
+🔬 Phase 2: Test-Time Adaptation Framework
+
+✅ Step 4: Add enable_ttt=True to run_experiment.py
+In test phase, allow gradient updates to router parameters.
+Optimize routing weights using cost-augmented loss:
+loss = task_loss + lambda_energy * predicted_energy + lambda_temp * temp_penalty
+loss.backward()
+File edits:
+
+moe_models.py: store task_loss and add cost_model.predict() inside forward pass
+run_experiment.py: test-time optimizer, loss hooks
+⚙️ Phase 3: Expert Profiling and Cost Model Training
+
+✅ Step 5: Extend expert_kernel_profiler.py
+Make sure all expert kernels (e.g., linear_fc1, dequant_unpack_op) are profiled in generate_isolated_script().
+Use run_profiler() to collect structured traces.
+✅ Step 6: Parse and Train Cost Model
+In parse_profiler_output.py, build a pipeline to:
+Read nsys SQLite logs
+Extract kernel_name, start, end, power, sm_util, etc.
+Use this to train cost model:
+cost_model.fit(X_telemetry + X_shape, y_latency, y_energy)
+🧪 Phase 4: Evaluation & Logging
+
+✅ Step 7: Use metrics_logger.py
+Log per-batch:
+Routing decision
+Predicted vs actual energy/latency
+Thermal headroom
+Save per-run stats for post-experiment analysis
