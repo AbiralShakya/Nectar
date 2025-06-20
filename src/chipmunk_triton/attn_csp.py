@@ -2,7 +2,7 @@ import torch
 import math
 import triton
 import triton.language as tl
-from chipmunk.util import get_kernel_config_attn
+from util import get_kernel_config_attn
 from einops import rearrange
 
 DEVICE = 'cuda'
