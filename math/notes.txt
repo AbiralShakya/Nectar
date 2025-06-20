@@ -1,0 +1,643 @@
+Phase 1: Precise Definitions
+
+Decision Variable
+Let 
+b
+∈
+R
+N
+b∈R 
+N
+  be the per-expert bias vector added to gate logits 
+g
+g.
+Routing Probabilities
+p
+i
+(
+b
+)
+=
+exp
+⁡
+(
+g
+i
++
+b
+i
+)
+/
+∑
+j
+exp
+⁡
+(
+g
+j
++
+b
+j
+)
+p 
+i
+​	
+ (b)=exp(g 
+i
+​	
+ +b 
+i
+​	
+ )/∑ 
+j
+​	
+ exp(g 
+j
+​	
+ +b 
+j
+​	
+ ).
+Per-Expert Cost Functions
+From kernelcostmodel.get_cost(batch_size, …), extract
+E
+i
+(
+b
+)
+,
+  
+L
+i
+(
+b
+)
+,
+  
+T
+i
+(
+b
+)
+(energy, latency, temp impact)
+.
+E 
+i
+​	
+ (b),L 
+i
+​	
+ (b),T 
+i
+​	
+ (b)(energy, latency, temp impact).
+Define average power
+  
+P
+i
+(
+b
+)
+=
+E
+i
+(
+b
+)
+ 
+/
+ 
+L
+i
+(
+b
+)
+.
+P 
+i
+​	
+ (b)=E 
+i
+​	
+ (b)/L 
+i
+​	
+ (b).
+Phase 2: Convexity of Every Building Block
+
+2a. Convexity of Per-Expert Costs
+Assume each of 
+E
+i
+,
+ 
+L
+i
+,
+ 
+T
+i
+E 
+i
+​	
+ ,L 
+i
+​	
+ ,T 
+i
+​	
+  is convex in any continuous inputs (batch size, hardware state)—verify in kernelcostmodel.py.
+Conclude 
+P
+i
+=
+E
+i
+/
+L
+i
+P 
+i
+​	
+ =E 
+i
+​	
+ /L 
+i
+​	
+  is convex if 
+L
+i
+>
+0
+L 
+i
+​	
+ >0 (division by positive preserves convexity).
+2b. Aggregated System Metrics
+Define observed metrics as softmax-weighted sums:
+P
+o
+b
+s
+(
+b
+)
+=
+∑
+i
+p
+i
+(
+b
+)
+ 
+P
+i
+(
+b
+)
+,
+L
+o
+b
+s
+(
+b
+)
+=
+∑
+i
+p
+i
+(
+b
+)
+ 
+L
+i
+(
+b
+)
+,
+  
+…
+P 
+obs
+​	
+ (b)= 
+i
+∑
+​	
+ p 
+i
+​	
+ (b)P 
+i
+​	
+ (b),L 
+obs
+​	
+ (b)= 
+i
+∑
+​	
+ p 
+i
+​	
+ (b)L 
+i
+​	
+ (b),…
+Argue a weighted sum 
+∑
+i
+p
+i
+ 
+C
+i
+∑ 
+i
+​	
+ p 
+i
+​	
+ C 
+i
+​	
+  of convex 
+C
+i
+C 
+i
+​	
+  remains convex in 
+b
+b, since softmax weights 
+p
+i
+(
+b
+)
+p 
+i
+​	
+ (b) are log-concave.
+2c. Individual Loss Terms
+Power Loss
+J
+p
+o
+w
+e
+r
+(
+x
+)
+=
+[
+max
+⁡
+(
+0
+,
+x
+−
+P
+t
+a
+r
+g
+e
+t
+)
+]
+2
+J 
+power
+​	
+ (x)=[max(0,x−P 
+target
+​	
+ )] 
+2
+  is convex in 
+x
+x.
+Temp & Latency Losses
+Same form 
+[
+max
+⁡
+(
+0
+,
+x
+−
+c
+)
+]
+2
+[max(0,x−c)] 
+2
+ , also convex.
+Throughput Bonus
+−
+J
+t
+h
+r
+o
+u
+g
+h
+p
+u
+t
+(
+T
+h
+)
+=
+−
+min
+⁡
+(
+0.1
+,
+T
+h
+/
+10,000
+)
+−J 
+throughput
+​	
+ (Th)=−min(0.1,Th/10,000) is convex in 
+T
+h
+Th.
+Regularizer
+J
+r
+e
+g
+(
+b
+)
+=
+λ
+2
+∥
+b
+∥
+2
++
+λ
+u
+∑
+i
+S
+o
+f
+t
+p
+l
+u
+s
+(
+b
+i
+)
+J 
+reg
+​	
+ (b)=λ 
+2
+​	
+ ∥b∥ 
+2
+ +λ 
+u
+​	
+ ∑ 
+i
+​	
+ Softplus(b 
+i
+​	
+ ) is convex in 
+b
+b.
+2d. Composite Objective
+Assemble
+L
+(
+b
+)
+=
+w
+p
+o
+w
+e
+r
+ 
+J
+p
+o
+w
+e
+r
+(
+P
+o
+b
+s
+(
+b
+)
+)
++
+w
+t
+e
+m
+p
+ 
+J
+t
+e
+m
+p
+(
+T
+o
+b
+s
+(
+b
+)
+)
++
+w
+l
+a
+t
+ 
+J
+l
+a
+t
+e
+n
+c
+y
+(
+L
+o
+b
+s
+(
+b
+)
+)
+−
+w
+t
+h
+r
+ 
+J
+t
+h
+r
+o
+u
+g
+h
+p
+u
+t
+(
+T
+h
+o
+b
+s
+(
+b
+)
+)
++
+J
+r
+e
+g
+(
+b
+)
+.
+L(b)=w 
+power
+​	
+ J 
+power
+​	
+ (P 
+obs
+​	
+ (b))+w 
+temp
+​	
+ J 
+temp
+​	
+ (T 
+obs
+​	
+ (b))+w 
+lat
+​	
+ J 
+latency
+​	
+ (L 
+obs
+​	
+ (b))−w 
+thr
+​	
+ J 
+throughput
+​	
+ (Th 
+obs
+​	
+ (b))+J 
+reg
+​	
+ (b).
+Invoke: non-negative weighted sums of convex functions are convex ⇒ 
+L
+(
+b
+)
+L(b) is convex.
+Phase 3: Code References & Practical Consequences
+
+Pin to Code
+kernelcostmodel.py:get_cost → definitions of 
+E
+i
+,
+ 
+L
+i
+,
+ 
+T
+i
+E 
+i
+​	
+ ,L 
+i
+​	
+ ,T 
+i
+​	
+ .
+routers.py:update_ttha → how 
+{
+J
+}
+{J} and weights 
+{
+w
+}
+{w} are combined.
+moe_models.py:compute_energy_loss → aggregation into 
+P
+o
+b
+s
+P 
+obs
+​	
+ .
+Guarantees
+Global optimum: any gradient-based update finds the best 
+b
+⋆
+b 
+⋆
+ .
+Convergence bounds: you can bound iterations/latency for each inference batch.
+Stability: small hardware noise yields small changes in 
+b
+⋆
+b 
+⋆
+ .
