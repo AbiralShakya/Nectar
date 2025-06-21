@@ -1,0 +1,24 @@
+notes:
+Router as a fast-adaptable submodule
+The Mixture-of-Experts router is treated like a “fast-weight” network, with its parameters updated at inference time based on energy telemetry.
+Updates occur once per large chunk (e.g. 1–10 K tokens or 100 ms windows), mirroring LaCT’s large-chunk TTT for high GPU utilization.
+Stronger online optimizers for routing biases
+Define a per-chunk loss combining measured energy and a proxy for accuracy (e.g. perplexity).
+Plug in Muon or momentum updates—enabled by chunked updates—to stabilize and normalize online adaptation.
+Hybrid routing safeguards
+Always include the top-1 static expert alongside 1–2 “energy-cheap” experts so the learned routing pattern is never fully abandoned.
+Interpolate between static and dynamic scores via a learned mixing coefficient, analogous to LaCT’s blend of window attention and chunk-wise memory.
+Employ chunk-level confidence checks (e.g. held-out token likelihood) to fall back to static routing whenever quality dips.
+Convexity and theoretical assurances
+Adapt LaCT’s convexity proof to the combined energy-plus-accuracy objective, showing that chunk-wise routing updates reliably find the global optimum under mild energy-model assumptions.
+Scalable implementation strategies
+Context parallelism: shard tokens within each chunk across GPUs, all-reduce router gradients per chunk (cf. LaCT Alg. 3).
+Tensor parallelism: shard router-MLP heads across devices with gather-then-scatter transforms (cf. LaCT Alg. 4).
+
+Adapting LaCT to MoE ?? 
+
+My Focus is on System-Level Orchestration, not just a Method: I explained that NECTAR operates as a meta-control framework, deciding when and how to apply TTT (including LaCT's principles), rather than being solely an efficient TTT method itself.
+My Primary Optimization is Multi-Objective Hardware Efficiency: I clarified that NECTAR explicitly targets simultaneous optimization of energy conservation, thermal management, memory usage, and performance. This differs from LaCT's main goal of improving TTT's computational utilization.
+I Integrate Real-time Hardware Awareness: I noted that NECTAR's router actively uses live GPU telemetry (temperature, power, memory pressure) to dynamically adjust TTT behavior, which is a capability not inherently present in LaCT's standalone method.
+My Context is MoE Architectures: I emphasized that NECTAR operates within a Mixture-of-Experts framework, enabling dynamic routing among heterogeneous experts, a structural context different from the monolithic Transformers LaCT primarily addresses.
+My Role is that of a "Controller": I highlighted that NECTAR acts as a "Neural Expert Controller," overseeing and orchestrating various components, whereas LaCT is a TTT method itself.
