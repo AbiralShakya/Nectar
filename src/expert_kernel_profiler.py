@@ -1,4 +1,3 @@
-# scripts/expert_kernel_profiler.py
 import torch
 import torch.nn as nn
 import os
@@ -7,13 +6,8 @@ import json
 import time
 import argparse
 import tempfile
-import sys # Import sys for checking Python executable path
+import sys 
 
-# --- Configuration for Temporary Script Generation ---
-# This dictionary maps a descriptive operation name to its PyTorch code.
-# The code will be injected into a temporary Python script.
-# Key variables: {d_model_in}, {d_model_out}, {batch_size}
-# These will be dynamically replaced by the generator.
 OPERATION_TEMPLATES = {
     "linear_fc1": { # Represents the first linear layer in your expert
         "code": """
@@ -61,11 +55,54 @@ OPERATION_TEMPLATES = {
             _ = unpacked_weights * scales.to(unpacked_weights.dtype)
             # --- End simulated dequantization logic ---
         """,
-        # d_model_in here represents the full input feature dimension for the linear layer
-        # (e.g., d_model for fc1, d_model*2 for fc2).
-        # d_model_out represents the output feature dimension.
-        # This operation is essentially preparing the weights for a linear layer.
-        "d_model_mapping": {"d_model_in": lambda d: d, "d_model_out": lambda d: d * 2} # Example for fc1's weight dequant
+        "d_model_mapping": {"d_model_in": lambda d: d, "d_model_out": lambda d: d * 2}, 
+        "ffn_gate": {
+    "code": """
+        model = nn.Linear({d_model_in}, {d_model_out}, bias=False).to(device)
+        dummy_input = torch.randn({batch_size}, {d_model_in}, device=device)
+        _ = model(dummy_input)
+    """,
+    "d_model_mapping": {"d_model_in": lambda d: d, "d_model_out": lambda d: int(8 * d / 3)}
+},
+"ffn_up": {
+    "code": """
+        model = nn.Linear({d_model_in}, {d_model_out}, bias=False).to(device)
+        dummy_input = torch.randn({batch_size}, {d_model_in}, device=device)
+        _ = model(dummy_input)
+    """,
+    "d_model_mapping": {"d_model_in": lambda d: d, "d_model_out": lambda d: int(8 * d / 3)}
+},
+"ffn_down": {
+    "code": """
+        model = nn.Linear({d_model_in}, {d_model_out}, bias=False).to(device)
+        dummy_input = torch.randn({batch_size}, {d_model_in}, device=device)
+        _ = model(dummy_input)
+    """,
+    "d_model_mapping": {"d_model_in": lambda d: int(8 * d / 3), "d_model_out": lambda d: d}
+},
+"silu_gelu": { # Profile common activation functions
+    "code": """
+        dummy_input = torch.randn({batch_model_input_size}, device=device) # Example: batch_size * hidden_dim
+        _ = F.silu(dummy_input)
+    """,
+    "d_model_mapping": {"d_model_in": lambda d: d * 2, "d_model_out": lambda d: d * 2} # For a token processed through hidden dim
+},
+"quantize_w8a16": { # Simulates a quantization step
+    "code": """
+        # This is a placeholder; actual quantization involves more complex ops
+        dummy_input = torch.randn({batch_size}, {d_model_in}, device=device)
+        _ = dummy_input.to(torch.int8) # Simulate data conversion
+    """,
+    "d_model_mapping": {"d_model_in": lambda d: d, "d_model_out": lambda d: d}
+},
+"dequantize_w8a16": { # Simulates a dequantization step
+    "code": """
+        # This is a placeholder; actual dequantization involves more complex ops
+        dummy_input = torch.randint(-128, 127, ({batch_size}, {d_model_in}), dtype=torch.int8, device=device)
+        _ = dummy_input.to(torch.float16) # Simulate data conversion back
+    """,
+    "d_model_mapping": {"d_model_in": lambda d: d, "d_model_out": lambda d: d}
+}
     }
 }
 
@@ -164,9 +201,8 @@ def main():
     parser.add_argument("--skip_ncu", action="store_true", help="Skip ncu profiling (nsys is sufficient for initial pass).")
     args = parser.parse_args()
 
-    # Define operation types corresponding to your MoE expert's internal structure
-    # 'dequant_unpack_op' is added to simulate and profile the dequantization overhead
-    op_types_to_profile = ["linear_fc1", "relu", "linear_fc2", "dequant_unpack_op"]
+    op_types_to_profile = ["linear_fc1", "relu", "linear_fc2", "dequant_unpack_op", "ffn_gate", "ffn_up", "ffn_down",
+                           "silu_gelu", "quantize_w8a16", "dequantizew8a16"]
 
     # Define various input token counts (batch sizes) to profile
     input_batch_sizes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512] # Wider range for better cost model
