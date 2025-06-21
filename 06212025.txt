@@ -22,3 +22,23 @@ My Primary Optimization is Multi-Objective Hardware Efficiency: I clarified that
 I Integrate Real-time Hardware Awareness: I noted that NECTAR's router actively uses live GPU telemetry (temperature, power, memory pressure) to dynamically adjust TTT behavior, which is a capability not inherently present in LaCT's standalone method.
 My Context is MoE Architectures: I emphasized that NECTAR operates within a Mixture-of-Experts framework, enabling dynamic routing among heterogeneous experts, a structural context different from the monolithic Transformers LaCT primarily addresses.
 My Role is that of a "Controller": I highlighted that NECTAR acts as a "Neural Expert Controller," overseeing and orchestrating various components, whereas LaCT is a TTT method itself.
+
+
+consider the 4 algorithmns outlined in TTT done right paper
+1. large chunk test time training layer 
+2. LaCT layer with inlayer hybrid window attention 
+3. large chunk test time training layer with context parallel sharaded inside chunk 
+4. large chunk test time training layer with tensor paralleism by sharding head\
+
+
+in nectar:
+    1. activation function (swiglu) implement the forward pass. calc gradients
+        orchestrate optimizer step and weight norm for weights (the update part of 1)
+        chunking logic in internels of lactmoeexpert 
+
+    2. lact layer combined with local softmax multihead attn withini single layer, handle local dependices in data modailities 
+        TODO 
+
+    3. no need to implement rn (not a distributed thing, nectar is on device)
+
+    4. need to consider in the futureeee. 
