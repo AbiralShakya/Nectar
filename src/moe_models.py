@@ -35,7 +35,7 @@ class MoEConfig:
     lact_lr: float = 1e-3 # Learning rate for internal fast weights
     lact_fast_weight_dim_ratio: float = 0.25 # Ratio of fast weight hidden dim to d_model (e.g., 0.25 * d_model)
     lact_update_frequency_tokens: int = 1000 # Default to a smaller, more frequent update for initial testing
-    quantization_bits: int = 8 # Moved here for global config access (used by OptimizedQuantizedExpert)
+    quantization_bits: int = 8 
 
 
 class SwiGLUExpert(nn.Module):
@@ -113,11 +113,9 @@ class OptimizedQuantizedExpert(nn.Module):
         self.down_proj.weight.data = self.down_proj.weight.data.half()
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass with quantized operations (simulated by using half precision here)"""
+        original_dtype = x.dtype # Store the original dtype
         # In a real W8A16 setup, x might be FP16/BF16, and operations would run on quantized weights.
-        # Here, we cast x to half for a simplified "quantized" path.
         x = x.half()
-        
         gate_output = self.gate_proj(x)
         up_output = self.up_proj(x)
         
@@ -125,7 +123,7 @@ class OptimizedQuantizedExpert(nn.Module):
         activated = swish_gate * up_output
         
         output = self.down_proj(activated)
-        return output.to(x.dtype) # Return in original dtype
+        return output.to(original_dtype) # Cast back to the original input dtype
 
 
 # --- NEW: SwiGLUFastWeightNet (Internal Fast Weights for LaCT Expert) ---

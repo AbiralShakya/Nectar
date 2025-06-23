@@ -12,7 +12,7 @@ print(f"SwiGLUExpert output shape: {out1.shape}, dtype: {out1.dtype}")
 assert out1.shape == dummy_input.shape
 
 # Test OptimizedQuantizedExpert
-expert2 = OptimizedQuantizedExpert(config, 1, quantization_bits=8).cuda()
+expert2 = OptimizedQuantizedExpert(config, 1).cuda()
 out2 = expert2(dummy_input)
 print(f"OptimizedQuantizedExpert output shape: {out2.shape}, dtype: {out2.dtype}")
 assert out2.shape == dummy_input.shape
