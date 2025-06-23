@@ -1,8 +1,9 @@
-# src/monitors.py
 import time
 import threading
 from typing import Dict, Any, Tuple
 
+# Initialize _PYNVML_AVAILABLE in the global scope
+_PYNVML_AVAILABLE = False 
 try:
     import pynvml
     _PYNVML_AVAILABLE = True
@@ -30,6 +31,7 @@ class GpuSystemMonitor:
         self._running = True
         self.handle = None
 
+        # Access the global _PYNVML_AVAILABLE flag directly
         if _PYNVML_AVAILABLE:
             try:
                 pynvml.nvmlInit()
@@ -38,7 +40,11 @@ class GpuSystemMonitor:
             except pynvml.NVMLError as error:
                 print(f"Error initializing NVML for device {device_id}: {error}")
                 print("Falling back to simulated GPU data.")
-                _PYNVML_AVAILABLE = False
+                # If NVML initialization fails, even if pynvml was imported, treat as unavailable
+                # This needs to set a flag specific to this instance, or rely on global
+                # For simplicity in this fix, we'll ensure the global is consistent
+                global _PYNVML_AVAILABLE # Declare intent to modify global
+                _PYNVML_AVAILABLE = False 
         else:
             print("GpuSystemMonitor running in simulation mode.")
 
@@ -54,6 +60,8 @@ class GpuSystemMonitor:
                 timestamp = time.time()
                 temp, power, gpu_util, mem_util = 0.0, 0.0, 0, 0
 
+                # Check the global _PYNVML_AVAILABLE flag.
+                # If NVML init failed in __init__, this will correctly fall back to simulation.
                 if _PYNVML_AVAILABLE and self.handle:
                     try:
                         temp = pynvml.nvmlDeviceGetTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
@@ -62,8 +70,13 @@ class GpuSystemMonitor:
                         gpu_util = util.gpu
                         mem_util = util.memory
                     except pynvml.NVMLError as error:
-                        print(f"Error querying NVML: {error}. Simulating data.")
+                        # If a runtime NVML error occurs, it means pynvml was initialized
+                        # but something went wrong during query. We can switch to simulation
+                        # for this instance's remaining lifetime.
+                        print(f"Error querying NVML: {error}. Simulating data for this instance.")
                         temp, power, gpu_util, mem_util = self._simulate_telemetry()
+                        # No need to change global _PYNVML_AVAILABLE here, just this instance's behavior
+                        # You could add a self._use_simulated_data = True flag if you want fine-grained control per instance
                 else:
                     temp, power, gpu_util, mem_util = self._simulate_telemetry()
 
@@ -99,11 +112,9 @@ class GpuSystemMonitor:
 
     def _simulate_telemetry(self) -> Tuple[float, float, int, int]:
         """Simple simulation of temp/power/util for testing without real GPU."""
-        # This simulation can be made more sophisticated to mimic real GPU behavior
-        # during different load patterns.
-        current_time_ms = int(time.time() * 1000) % 20000 # Cycle every 20 seconds
-        temp = 40 + 25 * (abs(current_time_ms - 10000) / 10000) # Simulates a temp swing between 40-65
-        power = 50 + 70 * (abs(current_time_ms - 10000) / 10000) # Simulates power swing between 50-120
+        current_time_ms = int(time.time() * 1000) % 20000 
+        temp = 40 + 25 * (abs(current_time_ms - 10000) / 10000) 
+        power = 50 + 70 * (abs(current_time_ms - 10000) / 10000) 
         gpu_util = int(20 + 70 * (abs(current_time_ms - 10000) / 10000))
         mem_util = int(10 + 40 * (abs(current_time_ms - 10000) / 10000))
         return temp, power, gpu_util, mem_util
@@ -127,6 +138,7 @@ class GpuSystemMonitor:
     def stop(self):
         """Stops the background monitoring thread."""
         self._running = False
+        # Only shutdown NVML if it was actually initialized successfully for this device handle
         if _PYNVML_AVAILABLE and self.handle:
             try:
                 pynvml.nvmlShutdown()
