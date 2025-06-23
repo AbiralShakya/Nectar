@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from monitor import GpuSystemMonitor
 from kernelcostmodel import KernelCostModel
 
-# --- MoEConfig is defined here, as it's the root of the circular import ---
 @dataclass
 class MoEConfig:
     """Configuration for MoE models with realistic defaults"""
@@ -35,7 +34,7 @@ class MoEConfig:
     lact_lr: float = 1e-3 # Learning rate for internal fast weights
     lact_fast_weight_dim_ratio: float = 0.25 # Ratio of fast weight hidden dim to d_model (e.g., 0.25 * d_model)
     lact_update_frequency_tokens: int = 1000 # Default to a smaller, more frequent update for initial testing
-    quantization_bits: int = 8 
+    quantization_bits: int = 8 # Moved here for global config access (used by OptimizedQuantizedExpert)
 
 
 class SwiGLUExpert(nn.Module):
@@ -113,9 +112,13 @@ class OptimizedQuantizedExpert(nn.Module):
         self.down_proj.weight.data = self.down_proj.weight.data.half()
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass with quantized operations (simulated by using half precision here)"""
         original_dtype = x.dtype # Store the original dtype
+
         # In a real W8A16 setup, x might be FP16/BF16, and operations would run on quantized weights.
+        # Here, we cast x to half for a simplified "quantized" path.
         x = x.half()
+        
         gate_output = self.gate_proj(x)
         up_output = self.up_proj(x)
         
@@ -123,7 +126,7 @@ class OptimizedQuantizedExpert(nn.Module):
         activated = swish_gate * up_output
         
         output = self.down_proj(activated)
-        return output.to(original_dtype) # Cast back to the original input dtype
+        return output.to(original_dtype) # Return in original dtype
 
 
 # --- NEW: SwiGLUFastWeightNet (Internal Fast Weights for LaCT Expert) ---
@@ -140,14 +143,19 @@ class SwiGLUFastWeightNet(nn.Module):
         
         # Parameters for the fast weight network (typically smaller than main model)
         # LaCT uses W1, W2, W3 (SwiGLU-MLP)
-        # These are nn.Parameter so they are trainable by an optimizer
-        self.w1 = nn.Parameter(torch.randn(d_model, fast_weight_dim))
-        self.w3 = nn.Parameter(torch.randn(d_model, fast_weight_dim))
-        self.w2 = nn.Parameter(torch.randn(fast_weight_dim, d_model)) # w2: [dh, d]
+        # Consistent with F.linear(input, weight) where weight is [out_features, in_features]
+        # x: [B, d_model], w1: [fast_weight_dim, d_model] -> F.linear(x, w1)
+        self.w1 = nn.Parameter(torch.randn(fast_weight_dim, d_model)) # Changed shape here
+        self.w3 = nn.Parameter(torch.randn(fast_weight_dim, d_model)) # Changed shape here
+        
+        # activated: [B, fast_weight_dim], w2: [d_model, fast_weight_dim] -> F.linear(activated, w2)
+        self.w2 = nn.Parameter(torch.randn(d_model, fast_weight_dim)) # Changed shape here
         
         # Initialize weights
+        # Adjusting std for new shapes
         std_w1_w3 = math.sqrt(2.0 / d_model)
-        std_w2 = math.sqrt(2.0 / fast_weight_dim)
+        std_w2 = math.sqrt(2.0 / fast_weight_dim) # w2's fan-in is fast_weight_dim
+
         nn.init.normal_(self.w1, mean=0.0, std=std_w1_w3)
         nn.init.normal_(self.w3, mean=0.0, std=std_w1_w3)
         nn.init.normal_(self.w2, mean=0.0, std=std_w2)
@@ -164,12 +172,13 @@ class SwiGLUFastWeightNet(nn.Module):
         Corresponds to LaCT's apply_fw(fast_weight, q)
         """
         # x is [batch_size_chunk, d_model]
-        # F.linear(input, weight.T) is equivalent to input @ weight
-        hidden_gate = F.linear(x, self.w1.T) # [B, fast_weight_dim]
-        hidden_up = F.linear(x, self.w3.T)   # [B, fast_weight_dim]
+        # F.linear(input, weight) is equivalent to input @ weight.T
+        hidden_gate = F.linear(x, self.w1) # [B, fast_weight_dim]
+        hidden_up = F.linear(x, self.w3)   # [B, fast_weight_dim]
         
         activated = F.silu(hidden_gate) * hidden_up # [B, fast_weight_dim]
-        output = F.linear(activated, self.w2.T) # [B, d_model]
+        
+        output = F.linear(activated, self.w2) # [B, d_model]
         return output
 
     def compute_update_gradients(self, k: torch.Tensor, v: torch.Tensor, lr_coeffs: torch.Tensor) -> Dict[str, torch.Tensor]:
@@ -188,11 +197,11 @@ class SwiGLUFastWeightNet(nn.Module):
         # k and v are [batch_size_chunk, d_model]
         
         # Forward pass through fast weight net with k
-        gate_before_act = F.linear(k, self.w1.T)
-        hidden_before_gate = F.linear(k, self.w3.T)
+        gate_before_act = F.linear(k, self.w1)
+        hidden_before_gate = F.linear(k, self.w3)
         hidden = F.silu(gate_before_act) * hidden_before_gate
         
-        fW_k = F.linear(hidden, self.w2.T) # [batch_size_chunk, d_model]
+        fW_k = F.linear(hidden, self.w2) # [batch_size_chunk, d_model]
         
         # Negative dot product loss, summed over d_model dimension
         # (fW_k * v) is [batch_size_chunk, d_model]
@@ -212,8 +221,8 @@ class SwiGLUFastWeightNet(nn.Module):
         grads = torch.autograd.grad(chunk_loss, [self.w1, self.w2, self.w3], retain_graph=False)
         
         # Return gradients as a dict, mapping to param names
-        return {'w1': grads[0], 'w2': grads[2], 'w3': grads[1]} # Corrected order w1,w2,w3
-
+        # Ensure correct mapping: grads[0] for w1, grads[1] for w2, grads[2] for w3
+        return {'w1': grads[0], 'w2': grads[1], 'w3': grads[2]}
 
 # --- NEW: LaCTMoEExpert ---
 class LaCTMoEExpert(nn.Module):
@@ -354,8 +363,7 @@ class LaCTMoEExpert(nn.Module):
                     # Normalize along rows (dim=0 for nn.Parameter (column-major) or input dim for weight matrix)
                     # LaCT applies L2-Normalize(W - g), then (W-g).norm(dim=1).
                     # Simplified: Re-normalize after update.
-                    if param.norm(p=2, dim=0) > 0: # Avoid division by zero if norm is 0
-                         param.data = F.normalize(param.data, p=2, dim=0) 
+                    param.data = F.normalize(param.data, p=2, dim=0) 
         
         # Disable requires_grad for fast weights after update to prevent accidental tracking outside this function
         # They should only be trainable within this specific update step.

@@ -1,6 +1,7 @@
 import time
 import threading
 from typing import Dict, Any, Tuple
+import torch
 
 # Initialize _PYNVML_AVAILABLE in the global scope.
 # This variable is global by virtue of being defined at the module level.
@@ -26,6 +27,7 @@ class GpuSystemMonitor:
         self._thermal_state = "cool"
         self._gpu_utilization_percent = 0
         self._memory_utilization_percent = 0
+        self.num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
 
         self.lock = threading.Lock() # Protects shared state
         self.history = [] # To store historical data for analysis (timestamp, temp, power, etc.)
