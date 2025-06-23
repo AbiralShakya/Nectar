@@ -1,4 +1,4 @@
-# python3 expert_kernel_profiler --d_model 4096 --profile_base_dir profiling_data_for_tests --skip_ncu for A100 profiling
+# python expert_kernel_profiler.py --d_model 4096 --profile_base_dir profiling_data_for_tests --skip_ncu for A100 profiling
 
 import torch
 import torch.nn as nn
@@ -330,7 +330,7 @@ def main():
     # Base commands for profilers
     # REMOVED --trace-gpu-metrics=true because it causes errors with older nsys versions.
     # For full GPU hardware counter metrics, a newer Nsight Systems (2023.1+) is required.
-    nsys_cmd_base = ["nsys", "profile", "--force-overwrite", "true", "--export=sqlite", "--stats=true"]
+    nsys_cmd_base = ["nsys", "profile", "--force-overwrite", "true", "--export=sqlite", "--stats=true", "--trace", "cuda"]
 
     ncu_cmd_base = ["ncu", "--set", "full", "--target-processes", "all"]
 
