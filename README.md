@@ -8,3 +8,4 @@ to consider: kernel optimizations for dequantization & ttt specifically (fused k
 
 Nectar is essentially an analogy to switch transformer but hardware aware (for now), or another interpretation is considering TTT research on model weight updates but now as larger amount of experts are being intergrated in next gen LLM and GenAI, bringing that test time self supervised learning to re routing itself.
 
+TODO: consider model sharding within GPU for memory management (good experimentation area)
