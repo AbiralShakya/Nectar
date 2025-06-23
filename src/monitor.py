@@ -137,6 +137,37 @@ class GpuSystemMonitor:
         """Returns a copy of the collected history."""
         with self.lock:
             return self.history.copy()
+        
+    def get_system_health_score(self) -> float:
+        """
+        Calculates a simple system health score based on current GPU stats.
+        Higher is generally better (e.g., lower utilization, temp).
+        This is a placeholder implementation.
+        """
+        stats = self.get_current_stats()
+
+        # Example heuristic: penalize high utilization, temperature, power
+        # Normalize to a 0-1 scale, where 1 is "perfect" health
+        gpu_util = stats.get('gpu_utilization', 0.0) # 0.0 to 1.0
+        temp_c = stats.get('gpu_temperature_c', 0.0)
+        power_w = stats.get('gpu_power_watts', 0.0)
+
+        # Simple inverse scaling for health:
+        # Utilization: 0% -> 1.0, 100% -> 0.0
+        util_health = 1.0 - gpu_util
+
+        # Temperature: Assume ideal <50C. Scale down sharply after that.
+        temp_health = max(0.0, 1.0 - (temp_c - 50.0) / 50.0) # 1.0 at 50C, 0.0 at 100C
+
+        # Power: Assume ideal <150W for an A100. Scale down if higher.
+        power_health = max(0.0, 1.0 - (power_w - 150.0) / 100.0) # 1.0 at 150W, 0.5 at 200W
+
+        # Combine them (you might want weighted average)
+        # This is a very simplified score; a real one would be more nuanced.
+        health_score = (util_health + temp_health + power_health) / 3.0
+
+        # Ensure score is within a reasonable range, e.g., 0 to 1
+        return max(0.0, min(1.0, health_score))
 
     def stop(self):
         """Stops the background monitoring thread."""
