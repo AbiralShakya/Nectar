@@ -2,6 +2,7 @@ import torch
 import triton
 import triton.language as tl
 from triton.language.extra import libdevice # For gelu/tanh if you want to fuse it too
+from typing import Tuple
 
 # Define common block sizes and autotune configs (tune these!)
 configs = [

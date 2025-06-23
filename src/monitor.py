@@ -2,14 +2,16 @@ import time
 import threading
 from typing import Dict, Any, Tuple
 
-# Initialize _PYNVML_AVAILABLE in the global scope
+# Initialize _PYNVML_AVAILABLE in the global scope.
+# This variable is global by virtue of being defined at the module level.
 _PYNVML_AVAILABLE = False 
+
 try:
     import pynvml
-    _PYNVML_AVAILABLE = True
+    _PYNVML_AVAILABLE = True # This assigns to the global variable
 except ImportError:
     print("Warning: pynvml not found. GPU thermal/power monitoring will be simulated.")
-    _PYNVML_AVAILABLE = False
+    _PYNVML_AVAILABLE = False # This also assigns to the global variable
 
 class GpuSystemMonitor:
     """
@@ -31,7 +33,9 @@ class GpuSystemMonitor:
         self._running = True
         self.handle = None
 
-        # Access the global _PYNVML_AVAILABLE flag directly
+        # Access the global _PYNVML_AVAILABLE flag directly.
+        # No need for 'global' keyword here because we are assigning to an attribute of 'self'
+        # or reading the global, but not re-declaring the global within the function's scope.
         if _PYNVML_AVAILABLE:
             try:
                 pynvml.nvmlInit()
@@ -40,13 +44,15 @@ class GpuSystemMonitor:
             except pynvml.NVMLError as error:
                 print(f"Error initializing NVML for device {device_id}: {error}")
                 print("Falling back to simulated GPU data.")
-                # If NVML initialization fails, even if pynvml was imported, treat as unavailable
-                # This needs to set a flag specific to this instance, or rely on global
-                # For simplicity in this fix, we'll ensure the global is consistent
-                global _PYNVML_AVAILABLE # Declare intent to modify global
-                _PYNVML_AVAILABLE = False 
+                # Important: If NVML initialization fails at runtime, we should ensure
+                # this *instance* correctly uses simulation. We cannot change the global
+                # _PYNVML_AVAILABLE from here in a way that affects other instances or modules
+                # without re-introducing issues.
+                # A robust way is to set an instance-specific flag:
+                self._pynvml_available_for_instance = False 
         else:
             print("GpuSystemMonitor running in simulation mode.")
+            self._pynvml_available_for_instance = False # Initialize for consistency
 
         self._start_background_update()
 
@@ -60,9 +66,10 @@ class GpuSystemMonitor:
                 timestamp = time.time()
                 temp, power, gpu_util, mem_util = 0.0, 0.0, 0, 0
 
-                # Check the global _PYNVML_AVAILABLE flag.
-                # If NVML init failed in __init__, this will correctly fall back to simulation.
-                if _PYNVML_AVAILABLE and self.handle:
+                # Use the instance-specific flag if present, otherwise fall back to global
+                use_pynvml = getattr(self, '_pynvml_available_for_instance', _PYNVML_AVAILABLE)
+
+                if use_pynvml and self.handle: # Check instance's capability and handle
                     try:
                         temp = pynvml.nvmlDeviceGetTemperature(self.handle, pynvml.NVML_TEMPERATURE_GPU)
                         power = pynvml.nvmlDeviceGetPowerUsage(self.handle) / 1000.0 # mW to W
@@ -70,13 +77,9 @@ class GpuSystemMonitor:
                         gpu_util = util.gpu
                         mem_util = util.memory
                     except pynvml.NVMLError as error:
-                        # If a runtime NVML error occurs, it means pynvml was initialized
-                        # but something went wrong during query. We can switch to simulation
-                        # for this instance's remaining lifetime.
-                        print(f"Error querying NVML: {error}. Simulating data for this instance.")
+                        print(f"Error querying NVML at runtime: {error}. Simulating data for this instance.")
                         temp, power, gpu_util, mem_util = self._simulate_telemetry()
-                        # No need to change global _PYNVML_AVAILABLE here, just this instance's behavior
-                        # You could add a self._use_simulated_data = True flag if you want fine-grained control per instance
+                        self._pynvml_available_for_instance = False # Disable for future updates of this instance
                 else:
                     temp, power, gpu_util, mem_util = self._simulate_telemetry()
 
@@ -139,7 +142,8 @@ class GpuSystemMonitor:
         """Stops the background monitoring thread."""
         self._running = False
         # Only shutdown NVML if it was actually initialized successfully for this device handle
-        if _PYNVML_AVAILABLE and self.handle:
+        # and if the global flag still indicates pynvml was available initially.
+        if getattr(self, '_pynvml_available_for_instance', False) and self.handle:
             try:
                 pynvml.nvmlShutdown()
                 print("GpuSystemMonitor: NVML shutdown.")

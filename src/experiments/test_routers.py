@@ -8,8 +8,8 @@ import math
 # Add the src directory to PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from moe_models import MoEConfig
-from routers import CapacityBasedRouter, AdaptiveRouter, RoutingStrategy, HardwareMetrics
+from moe_models import MoEConfig, CapacityBasedRouter
+from routers import AdaptiveRouter, RoutingStrategy, HardwareMetrics
 from kernelcostmodel import KernelCostModel
 from monitor import GpuSystemMonitor
 

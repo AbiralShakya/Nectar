@@ -11,7 +11,6 @@ import math
 import logging
 from enum import Enum
 
-# Import your updated NECTAR components
 from monitor import GpuSystemMonitor
 from kernelcostmodel import KernelCostModel # Use the updated KCM
 from moe_models import MoEConfig # Import the new MoEConfig

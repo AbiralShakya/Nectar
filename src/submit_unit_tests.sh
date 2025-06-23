@@ -20,7 +20,7 @@ module load anaconda3/2023.03              # Example Anaconda module
 module load cuda/12.1                      # Example CUDA module
 
 # Activate your Conda environment
-source activate topological_insulators               
+source activate topological_ml   
 
 PROJECT_ROOT="/home/as0714/hardware_efficient_ml"
 cd "$PROJECT_ROOT" || { echo "ERROR: Failed to change directory to $PROJECT_ROOT"; exit 1; }
