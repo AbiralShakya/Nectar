@@ -1,4 +1,3 @@
-# scripts/run_experiment.py
 import argparse
 import os
 import sys
@@ -11,7 +10,6 @@ from kernelcostmodel import KernelCostModel
 # Ensure src directory is in PYTHONPATH for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-# Import all necessary components
 from moe_models import MoETransformerBlock, compute_energy_loss, KernelCostModel
 from routers import RoutingStrategy, GpuSystemMonitor
 from data_utils import DataLoaderManager
@@ -30,7 +28,6 @@ def run_experiment_phase(args, model: MoETransformerBlock, dataloader_manager: D
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
 
-    # Determine which workloads to use for this phase
     workload_types = ["standard", "high_complexity", "small_batch", "large_batch"]
 
     print(f"\n--- Starting Experiment Phase for Expert Type: {expert_type} ---")

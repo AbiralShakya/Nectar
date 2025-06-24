@@ -371,6 +371,14 @@ class LaCTMoEExpert(nn.Module):
         self.fast_weight_net.w2.requires_grad_(False)
         self.fast_weight_net.w3.requires_grad_(False)
 
+def compute_energy_loss(selected_expert_indices: torch.Tensor, expert_profiles: Dict[str, Dict], alpha=0.001):
+    energy = 0.0
+    for idx in selected_expert_indices.view(-1):
+        profile = expert_profiles.get(str(int(idx.item())))
+        if profile:
+            energy += profile.get("energy_cost", 0.0)
+    return alpha * energy
+
 
 class CapacityBasedRouter(nn.Module):
     def __init__(self, config: MoEConfig):
