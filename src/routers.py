@@ -26,6 +26,7 @@ class RoutingStrategy(Enum):
     HIERARCHICAL_ADAPTIVE = "hierarchical_adaptive"
     PREDICTIVE_THERMAL = "predictive_thermal"
     MULTI_GPU_AWARE = "multi_gpu_aware"
+    DYNAMIC_EXPERT_REROUTING = "dynamic_expert_rerouting"  # New strategy for expert rerouting
 
 @dataclass
 class HardwareMetrics:
@@ -62,6 +63,16 @@ class HardwareMetrics:
             power_limit_normalized / 500.0, # Normalize power limit (e.g., max 500W)
             self.voltage # Voltage is usually small, don't normalize heavily
         ], device=device, dtype=torch.float32)
+
+@dataclass
+class BatchDistributionHistory:
+    """Tracks historical batch distribution patterns for expert rerouting."""
+    timestamp: float
+    expert_distribution: torch.Tensor  # [num_experts] - token counts per expert
+    expert_weights: torch.Tensor  # [num_experts] - routing weights/probabilities
+    hardware_metrics: Dict[str, float]  # GPU metrics at time of routing
+    performance_metrics: Dict[str, float]  # Latency, throughput, energy
+    rerouting_decisions: Optional[torch.Tensor] = None  # [num_experts] - rerouting adjustments applied
 
 @dataclass
 class ExpertProfile:
@@ -196,6 +207,233 @@ class TTHAAdapter(nn.Module):
         
         return routing_biases, uncertainties
 
+class BatchDistributionTracker:
+    """
+    Tracks and analyzes batch distribution patterns for dynamic expert rerouting.
+    Implements the core logic for using previous batch distributions to predict
+    and correct future imbalances.
+    """
+    
+    def __init__(self, num_experts: int, history_length: int = 50, 
+                 imbalance_threshold: float = 0.3, rerouting_strength: float = 0.5):
+        self.num_experts = num_experts
+        self.history_length = history_length
+        self.imbalance_threshold = imbalance_threshold  # Threshold for considering distribution imbalanced
+        self.rerouting_strength = rerouting_strength  # How aggressive to be with rerouting
+        
+        # Historical data storage
+        self.distribution_history: deque = deque(maxlen=history_length)
+        self.expert_usage_trends: torch.Tensor = torch.zeros(num_experts)  # Moving average of expert usage
+        self.imbalance_scores: deque = deque(maxlen=history_length)  # Track imbalance over time
+        
+        # Rerouting statistics
+        self.rerouting_count = 0
+        self.total_rerouting_improvement = 0.0
+        self.last_rerouting_time = 0.0
+        
+        # Power/energy optimization parameters
+        self.power_budget = 400.0  # Watts - can be dynamic
+        self.energy_per_token_target = 2.0  # mJ per token
+        self.thermal_threshold = 80.0  # Celsius
+        
+    def update_distribution(self, expert_indices: torch.Tensor, expert_weights: torch.Tensor,
+                          hardware_metrics: Dict[str, float], performance_metrics: Dict[str, float]) -> None:
+        """
+        Update the distribution tracker with new batch routing information.
+        
+        Args:
+            expert_indices: [num_tokens] - which expert each token was routed to
+            expert_weights: [num_experts] - routing weights/probabilities
+            hardware_metrics: Current GPU metrics
+            performance_metrics: Current performance metrics
+        """
+        timestamp = time.time()
+        
+        # Count tokens per expert
+        expert_distribution = torch.zeros(self.num_experts, dtype=torch.float32)
+        for expert_id in range(self.num_experts):
+            expert_distribution[expert_id] = (expert_indices == expert_id).sum().float()
+        
+        # Normalize to percentage
+        total_tokens = expert_distribution.sum()
+        if total_tokens > 0:
+            expert_distribution = expert_distribution / total_tokens
+        
+        # Update moving average of expert usage
+        alpha = 0.1  # Smoothing factor
+        self.expert_usage_trends = (1 - alpha) * self.expert_usage_trends + alpha * expert_distribution
+        
+        # Calculate imbalance score (entropy-based)
+        imbalance_score = self._calculate_imbalance_score(expert_distribution)
+        self.imbalance_scores.append(imbalance_score)
+        
+        # Store in history
+        distribution_record = BatchDistributionHistory(
+            timestamp=timestamp,
+            expert_distribution=expert_distribution.clone(),
+            expert_weights=expert_weights.clone(),
+            hardware_metrics=hardware_metrics.copy(),
+            performance_metrics=performance_metrics.copy()
+        )
+        self.distribution_history.append(distribution_record)
+        
+        logger.debug(f"Updated distribution tracker - Imbalance score: {imbalance_score:.3f}")
+    
+    def _calculate_imbalance_score(self, distribution: torch.Tensor) -> float:
+        """
+        Calculate how imbalanced the current distribution is.
+        Lower score = more balanced, Higher score = more imbalanced.
+        """
+        # Perfect balance would be uniform distribution
+        uniform_dist = torch.ones_like(distribution) / self.num_experts
+        
+        # KL divergence from uniform (higher = more imbalanced)
+        # Add small epsilon to avoid log(0)
+        eps = 1e-8
+        kl_div = F.kl_div(
+            torch.log(distribution + eps), uniform_dist, reduction='batchmean'
+        )
+        
+        # Alternative: variance-based imbalance
+        variance = torch.var(distribution)
+        
+        # Combine both metrics
+        imbalance_score = kl_div.item() + variance.item()
+        return imbalance_score
+    
+    def predict_future_imbalance(self) -> Tuple[torch.Tensor, float]:
+        """
+        Predict future imbalance based on historical patterns.
+        
+        Returns:
+            predicted_distribution: [num_experts] - predicted distribution
+            confidence: float - confidence in prediction (0-1)
+        """
+        if len(self.distribution_history) < 5:
+            # Not enough history, return current trends
+            return self.expert_usage_trends, 0.3
+        
+        # Extract recent distributions
+        recent_distributions = []
+        for record in list(self.distribution_history)[-10:]:  # Last 10 batches
+            recent_distributions.append(record.expert_distribution)
+        
+        if not recent_distributions:
+            return self.expert_usage_trends, 0.3
+        
+        # Stack and calculate trend
+        recent_tensor = torch.stack(recent_distributions, dim=0)  # [num_batches, num_experts]
+        
+        # Simple linear trend prediction
+        if recent_tensor.size(0) >= 2:
+            # Calculate trend (change per batch)
+            trend = (recent_tensor[-1] - recent_tensor[0]) / (recent_tensor.size(0) - 1)
+            predicted_distribution = recent_tensor[-1] + trend
+            
+            # Ensure valid probability distribution
+            predicted_distribution = F.softmax(predicted_distribution, dim=0)
+        else:
+            predicted_distribution = recent_tensor[-1]
+        
+        # Calculate confidence based on consistency of recent patterns
+        if recent_tensor.size(0) >= 3:
+            variance = torch.var(recent_tensor, dim=0).mean()
+            confidence = max(0.1, 1.0 - variance.item())
+        else:
+            confidence = 0.5
+        
+        return predicted_distribution, confidence
+    
+    def compute_rerouting_biases(self, current_distribution: torch.Tensor,
+                               hardware_metrics: Dict[str, float],
+                               power_budget: Optional[float] = None) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        """
+        Compute rerouting biases to balance expert distribution and optimize for power/energy.
+        
+        Args:
+            current_distribution: [num_experts] - current token distribution
+            hardware_metrics: Current GPU metrics
+            power_budget: Optional power budget override
+            
+        Returns:
+            rerouting_biases: [num_experts] - biases to apply to routing
+            metadata: Additional information about rerouting decision
+        """
+        if power_budget is None:
+            power_budget = self.power_budget
+        
+        # Predict future imbalance
+        predicted_distribution, confidence = self.predict_future_imbalance()
+        
+        # Calculate current imbalance
+        current_imbalance = self._calculate_imbalance_score(current_distribution)
+        
+        # Determine if rerouting is needed
+        needs_rerouting = current_imbalance > self.imbalance_threshold
+        
+        # Get hardware-aware constraints
+        current_temp = hardware_metrics.get('temperature', 50.0)
+        current_power = hardware_metrics.get('power_watt', 200.0)
+        thermal_pressure = max(0.0, (current_temp - 60.0) / 20.0)  # 0-1 scale
+        power_pressure = max(0.0, (current_power - power_budget * 0.7) / (power_budget * 0.3))
+        
+        # Compute target distribution (more uniform under pressure)
+        if thermal_pressure > 0.5 or power_pressure > 0.5:
+            # Under thermal/power pressure, aim for more uniform distribution
+            target_distribution = torch.ones(self.num_experts) / self.num_experts
+            rerouting_strength = self.rerouting_strength * (1.0 + thermal_pressure + power_pressure)
+        else:
+            # Normal conditions, use predicted distribution with some smoothing
+            target_distribution = 0.7 * predicted_distribution + 0.3 * torch.ones(self.num_experts) / self.num_experts
+            rerouting_strength = self.rerouting_strength
+        
+        # Calculate rerouting biases
+        # Positive bias = encourage routing to this expert
+        # Negative bias = discourage routing to this expert
+        distribution_diff = target_distribution - current_distribution
+        
+        # Apply rerouting strength and ensure reasonable bounds
+        rerouting_biases = distribution_diff * rerouting_strength
+        rerouting_biases = torch.clamp(rerouting_biases, -0.5, 0.5)
+        
+        # Power-aware adjustments
+        if power_pressure > 0.3:
+            # Under power pressure, bias towards more efficient experts
+            # This would require expert efficiency profiles - for now use simple heuristic
+            efficiency_biases = torch.randn(self.num_experts) * 0.1  # Placeholder
+            rerouting_biases += efficiency_biases * power_pressure
+        
+        metadata = {
+            'current_imbalance': current_imbalance,
+            'predicted_imbalance': self._calculate_imbalance_score(predicted_distribution),
+            'confidence': confidence,
+            'needs_rerouting': needs_rerouting,
+            'thermal_pressure': thermal_pressure,
+            'power_pressure': power_pressure,
+            'rerouting_strength': rerouting_strength,
+            'target_distribution': target_distribution.tolist(),
+            'distribution_diff': distribution_diff.tolist()
+        }
+        
+        return rerouting_biases, metadata
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get statistics about the distribution tracker."""
+        if not self.imbalance_scores:
+            return {'error': 'No data available'}
+        
+        recent_scores = list(self.imbalance_scores)[-20:]  # Last 20 batches
+        
+        return {
+            'avg_imbalance_score': np.mean(recent_scores),
+            'max_imbalance_score': np.max(recent_scores),
+            'min_imbalance_score': np.min(recent_scores),
+            'rerouting_count': self.rerouting_count,
+            'avg_rerouting_improvement': self.total_rerouting_improvement / max(1, self.rerouting_count),
+            'expert_usage_trends': self.expert_usage_trends.tolist(),
+            'history_length': len(self.distribution_history)
+        }
+
 class AdaptiveRouter(nn.Module):
     """
     Production-grade adaptive router for NECTAR, with advanced features for hardware-aware routing.
@@ -232,6 +470,14 @@ class AdaptiveRouter(nn.Module):
         self.expert_profiles = self._initialize_expert_profiles()
         self.load_balancer = ExpertLoadBalancer(config.num_experts, smoothing_factor=0.95) # Higher smoothing
         self.thermal_predictor = ThermalPredictor() # For predictive strategies
+        
+        # Dynamic expert rerouting components
+        self.batch_distribution_tracker = BatchDistributionTracker(
+            num_experts=config.num_experts,
+            history_length=50,
+            imbalance_threshold=0.3,
+            rerouting_strength=0.5
+        )
         
         # TTHA components (for KERNEL_AWARE_TTHA, HIERARCHICAL_ADAPTIVE, PREDICTIVE_THERMAL)
         self.ttha_adapter: Optional[TTHAAdapter] = None
@@ -413,6 +659,10 @@ class AdaptiveRouter(nn.Module):
             # Multi-GPU strategy biases based on overall GPU health
             final_biases = self._compute_multi_gpu_biases(base_cost_biases, device, num_tokens_in_batch, gpu_stats)
         
+        elif self.strategy == RoutingStrategy.DYNAMIC_EXPERT_REROUTING:
+            # Dynamic expert rerouting uses historical batch distribution patterns
+            final_biases = self._compute_dynamic_expert_rerouting_biases(base_cost_biases, device, num_tokens_in_batch, gpu_stats)
+        
         else:
             raise ValueError(f"Unknown routing strategy: {self.strategy}")
         
@@ -430,6 +680,15 @@ class AdaptiveRouter(nn.Module):
         # Update load balancer with actual assigned experts for the current batch
         self.load_balancer.update_loads(topk_indices, routing_weights)
         
+        # Store routing decision for batch distribution tracking
+        routing_decision = {
+            'expert_indices': topk_indices.flatten(),  # Flatten to 1D for easier processing
+            'expert_weights': routing_weights.flatten(),  # Flatten to 1D
+            'timestamp': time.time(),
+            'strategy': self.strategy.value
+        }
+        self.routing_decisions.append(routing_decision)
+        
         # Collect routing information
         routing_latency = time.time() - start_time
         self.routing_latencies.append(routing_latency)
@@ -443,6 +702,10 @@ class AdaptiveRouter(nn.Module):
             'system_health': self.gpu_system_monitor.get_system_health_score(),
             'cache_hit_rate': self.cache_hit_count / max(1, self.cache_hit_count + self.cache_miss_count),
         }
+        
+        # Add rerouting metadata if available
+        if hasattr(self, 'last_rerouting_metadata'):
+            routing_info['rerouting_metadata'] = self.last_rerouting_metadata
         
         return topk_indices, routing_weights, routing_info
     
@@ -716,6 +979,64 @@ class AdaptiveRouter(nn.Module):
         system_health_bias = (avg_system_health - 0.5) * 0.5 # Bias between -0.25 and 0.25, scaled
         
         return base_biases + system_health_bias # Apply a general system health bias
+    
+    def _compute_dynamic_expert_rerouting_biases(self, base_biases: torch.Tensor, 
+                                                  device: torch.device, num_tokens: int, gpu_stats: Dict[str, Any]) -> torch.Tensor:
+        """
+        Compute dynamic expert rerouting biases based on historical batch distribution patterns.
+        This implements the core logic for expert dynamic rerouting as described in the requirements.
+        """
+        # Get current expert distribution from recent routing decisions
+        if not self.routing_decisions:
+            # No history yet, return base biases
+            return base_biases
+        
+        # Get the most recent routing decision to understand current distribution
+        recent_decision = self.routing_decisions[-1]
+        expert_indices = recent_decision.get('expert_indices', None)
+        expert_weights = recent_decision.get('expert_weights', None)
+        
+        if expert_indices is None or expert_weights is None:
+            return base_biases
+        
+        # Calculate current distribution
+        current_distribution = torch.zeros(self.num_experts, device=device)
+        for expert_id in range(self.num_experts):
+            current_distribution[expert_id] = (expert_indices == expert_id).sum().float()
+        
+        # Normalize to percentage
+        total_tokens = current_distribution.sum()
+        if total_tokens > 0:
+            current_distribution = current_distribution / total_tokens
+        
+        # Update the batch distribution tracker
+        performance_metrics = {
+            'latency_ms': gpu_stats.get('inference_latency_ms', 0.0),
+            'throughput_tokens_per_sec': gpu_stats.get('throughput_tokens_per_sec', 0.0),
+            'energy_joules': gpu_stats.get('energy_joules', 0.0)
+        }
+        
+        self.batch_distribution_tracker.update_distribution(
+            expert_indices, expert_weights, gpu_stats, performance_metrics
+        )
+        
+        # Compute rerouting biases based on historical patterns and hardware state
+        rerouting_biases, rerouting_metadata = self.batch_distribution_tracker.compute_rerouting_biases(
+            current_distribution, gpu_stats
+        )
+        
+        # Combine base biases with rerouting biases
+        # Rerouting biases are applied as additive adjustments
+        combined_biases = base_biases + rerouting_biases.to(device)
+        
+        # Store rerouting metadata for logging
+        if hasattr(self, 'last_rerouting_metadata'):
+            self.last_rerouting_metadata = rerouting_metadata
+        
+        logger.debug(f"Dynamic expert rerouting - Imbalance: {rerouting_metadata.get('current_imbalance', 0):.3f}, "
+                    f"Needs rerouting: {rerouting_metadata.get('needs_rerouting', False)}")
+        
+        return combined_biases
     
     def update_ttha(self, 
                     observed_metrics: Dict[str, float], 
@@ -1064,6 +1385,718 @@ class ThermalPredictor:
                                 (projected_power_increase / max(1, current_power)) * 10.0 # Example sensitivity factor
 
         return max(0.0, projected_temp_change) # Return expected temperature change
+
+
+class EnergyAwareTTTRouter(nn.Module):
+    """
+    Novel Energy-Aware Test-Time Training Router that combines:
+    1. TTT feedback extraction from transformer gradients
+    2. Kernel-level energy profiles and statistical load balancing
+    3. Dynamic scaling based on real-time hardware state
+    4. Energy-aware loss functions during TTT
+    5. Integration with existing hardware monitoring
+    
+    This implements the comprehensive approach described in the implementation plan,
+    inspired by "Test-Time Training Done Right" paper's large-chunk TTT principles.
+    """
+    
+    def __init__(self, 
+                 config: MoEConfig,
+                 kernel_cost_model: KernelCostModel,
+                 gpu_system_monitor: GpuSystemMonitor,
+                 ttt_chunk_size: int = 2048,
+                 ttt_update_frequency: int = 512,
+                 energy_aware_lr: float = 1e-4,
+                 muon_enabled: bool = True,
+                 device_topology: Optional[Dict[str, Any]] = None):
+        super().__init__()
+        
+        self.config = config
+        self.num_experts = config.num_experts
+        self.top_k = config.top_k
+        self.kernel_cost_model = kernel_cost_model
+        self.gpu_system_monitor = gpu_system_monitor
+        
+        # TTT-specific parameters (inspired by LaCT paper)
+        self.ttt_chunk_size = ttt_chunk_size
+        self.ttt_update_frequency = ttt_update_frequency
+        self.energy_aware_lr = energy_aware_lr
+        self.muon_enabled = muon_enabled
+        
+        # Multi-objective weights for energy-aware optimization
+        self.objective_weights = {
+            'performance': 0.25,   # Latency, Throughput
+            'energy': 0.35,        # Power consumption (higher weight for energy focus)
+            'thermal': 0.20,       # Temperature
+            'memory': 0.10,        # Memory pressure
+            'load_balance': 0.10   # Uniform expert usage
+        }
+        
+        # TTT Fast Weights Network (SwiGLU-MLP as in LaCT)
+        self.fast_weight_dim = max(64, config.d_model // 8)  # Scale with model size
+        self.fast_weight_net = self._create_fast_weight_network()
+        
+        # TTT Optimizer (Muon or AdamW)
+        if muon_enabled:
+            self.ttt_optimizer = MuonOptimizer(
+                self.fast_weight_net.parameters(),
+                lr=energy_aware_lr,
+                momentum=0.9
+            )
+        else:
+            self.ttt_optimizer = torch.optim.AdamW(
+                self.fast_weight_net.parameters(),
+                lr=energy_aware_lr,
+                weight_decay=1e-5,
+                betas=(0.9, 0.999)
+            )
+        
+        # TTT Scheduler with warm restarts
+        self.ttt_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            self.ttt_optimizer, T_0=100, T_mult=2
+        )
+        
+        # Chunk buffers for TTT updates (LaCT-style large chunks)
+        self.chunk_buffer_k = []
+        self.chunk_buffer_v = []
+        self.chunk_buffer_lr_coeffs = []
+        self.tokens_since_last_update = 0
+        
+        # Energy-aware components
+        self.energy_predictor = EnergyPredictor(config.num_experts, config.d_model)
+        self.thermal_adaptive_scaler = ThermalAdaptiveScaler()
+        self.statistical_load_balancer = StatisticalLoadBalancer(config.num_experts)
+        
+        # Performance tracking
+        self.ttt_update_count = 0
+        self.energy_savings_history = deque(maxlen=1000)
+        self.thermal_improvements_history = deque(maxlen=1000)
+        
+        # Exponential moving averages for stable loss components
+        self.ema_energy_loss = 0.0
+        self.ema_thermal_loss = 0.0
+        self.ema_performance_loss = 0.0
+        self.ema_memory_loss = 0.0
+        self.ema_decay = 0.99
+        
+        logger.info(f"Initialized EnergyAwareTTTRouter with TTT chunk size: {ttt_chunk_size}")
+    
+    def _create_fast_weight_network(self) -> nn.Module:
+        """Create SwiGLU-MLP fast weight network as in LaCT paper."""
+        class SwiGLUFastWeightNet(nn.Module):
+            def __init__(self, d_model: int, fast_weight_dim: int):
+                super().__init__()
+                self.d_model = d_model
+                self.fast_weight_dim = fast_weight_dim
+                
+                # SwiGLU-MLP parameters (W1, W2, W3 as in LaCT)
+                self.w1 = nn.Parameter(torch.randn(fast_weight_dim, d_model))
+                self.w3 = nn.Parameter(torch.randn(fast_weight_dim, d_model))
+                self.w2 = nn.Parameter(torch.randn(d_model, fast_weight_dim))
+                
+                # Initialize weights
+                std_w1_w3 = math.sqrt(2.0 / d_model)
+                std_w2 = math.sqrt(2.0 / fast_weight_dim)
+                
+                nn.init.normal_(self.w1, mean=0.0, std=std_w1_w3)
+                nn.init.normal_(self.w3, mean=0.0, std=std_w1_w3)
+                nn.init.normal_(self.w2, mean=0.0, std=std_w2)
+                
+                # Fast weights are updated during TTT, not main training
+                self.w1.requires_grad_(False)
+                self.w2.requires_grad_(False)
+                self.w3.requires_grad_(False)
+            
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                """Apply fast weight network to input."""
+                hidden_gate = F.linear(x, self.w1)
+                hidden_up = F.linear(x, self.w3)
+                activated = F.silu(hidden_gate) * hidden_up
+                return F.linear(activated, self.w2)
+            
+            def compute_update_gradients(self, k: torch.Tensor, v: torch.Tensor, 
+                                       lr_coeffs: torch.Tensor) -> Dict[str, torch.Tensor]:
+                """Compute gradients for fast weights based on K,V pairs."""
+                # Enable gradients temporarily
+                self.w1.requires_grad_(True)
+                self.w2.requires_grad_(True)
+                self.w3.requires_grad_(True)
+                
+                # Forward pass with keys
+                gate_before_act = F.linear(k, self.w1)
+                hidden_before_gate = F.linear(k, self.w3)
+                hidden = F.silu(gate_before_act) * hidden_before_gate
+                fW_k = F.linear(hidden, self.w2)
+                
+                # Negative dot product loss (LaCT Eq. 7)
+                fast_weight_loss_per_token = -(fW_k * v).sum(dim=-1)
+                
+                # Apply learning rate coefficients
+                if lr_coeffs is not None and lr_coeffs.ndim == 2:
+                    fast_weight_loss_per_token = fast_weight_loss_per_token * lr_coeffs[:, 0]
+                
+                chunk_loss = fast_weight_loss_per_token.mean()
+                
+                # Compute gradients
+                grads = torch.autograd.grad(chunk_loss, [self.w1, self.w2, self.w3], retain_graph=False)
+                
+                return {'w1': grads[0], 'w2': grads[1], 'w3': grads[2]}
+        
+        return SwiGLUFastWeightNet(self.config.d_model, self.fast_weight_dim)
+    
+    def forward(self, 
+                gate_logits: torch.Tensor,
+                num_tokens_in_batch: int,
+                context: Optional[Dict[str, Any]] = None) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
+        """
+        Forward pass with energy-aware TTT routing.
+        
+        Args:
+            gate_logits: [num_tokens, num_experts] - router logits
+            num_tokens_in_batch: Number of tokens in current batch
+            context: Optional context including TTT feedback
+            
+        Returns:
+            expert_indices: [num_tokens, top_k] - selected expert indices
+            expert_weights: [num_tokens, top_k] - expert weights
+            metadata: Routing metadata including TTT info
+        """
+        device = gate_logits.device
+        batch_size, num_experts = gate_logits.shape
+        
+        # 1. Extract TTT feedback from context if available
+        ttt_feedback = self._extract_ttt_feedback(context)
+        
+        # 2. Get current hardware state
+        gpu_stats = self.gpu_system_monitor.get_current_stats()
+        
+        # 3. Compute base routing biases from kernel cost model
+        base_biases = self._compute_base_biases(num_tokens_in_batch, gpu_stats)
+        
+        # 4. Apply energy-aware TTT adjustments
+        ttt_biases = self._compute_ttt_biases(base_biases, ttt_feedback, gpu_stats)
+        
+        # 5. Apply thermal-adaptive scaling
+        thermal_scaling = self.thermal_adaptive_scaler.get_scaling_factor(gpu_stats)
+        ttt_biases = ttt_biases * thermal_scaling
+        
+        # 6. Apply statistical load balancing
+        load_balance_biases = self.statistical_load_balancer.get_biases(gpu_stats)
+        final_biases = ttt_biases + load_balance_biases * 0.3  # Weight for load balancing
+        
+        # 7. Apply biases to gate logits
+        adjusted_logits = gate_logits + final_biases.unsqueeze(0).expand_as(gate_logits)
+        
+        # 8. Perform top-k selection
+        expert_weights, expert_indices = torch.topk(adjusted_logits, self.top_k, dim=-1)
+        
+        # 9. Update TTT buffers and potentially perform update
+        self._update_ttt_buffers(gate_logits, expert_indices, gpu_stats)
+        
+        # 10. Update statistical load balancer
+        self.statistical_load_balancer.update_usage(expert_indices)
+        
+        # 11. Prepare metadata
+        metadata = {
+            'ttt_feedback': ttt_feedback,
+            'thermal_scaling': thermal_scaling,
+            'energy_biases': ttt_biases.tolist(),
+            'load_balance_biases': load_balance_biases.tolist(),
+            'ttt_update_count': self.ttt_update_count,
+            'gpu_stats': gpu_stats
+        }
+        
+        return expert_indices, expert_weights, metadata
+    
+    def _extract_ttt_feedback(self, context: Optional[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+        """Extract TTT feedback from transformer gradients and activations."""
+        if context is None:
+            return {}
+        
+        ttt_feedback = {}
+        
+        # Extract gradient information if available
+        if 'gradients' in context:
+            gradients = context['gradients']
+            # Compute gradient statistics for energy-aware routing
+            grad_norms = torch.stack([g.norm() for g in gradients if g is not None])
+            ttt_feedback['gradient_norms'] = grad_norms
+            ttt_feedback['gradient_mean'] = grad_norms.mean()
+            ttt_feedback['gradient_std'] = grad_norms.std()
+        
+        # Extract activation statistics if available
+        if 'activations' in context:
+            activations = context['activations']
+            # Compute activation energy indicators
+            act_energy = torch.stack([torch.sum(a ** 2) for a in activations if a is not None])
+            ttt_feedback['activation_energy'] = act_energy
+            ttt_feedback['activation_energy_mean'] = act_energy.mean()
+        
+        # Extract loss information if available
+        if 'loss' in context:
+            loss = context['loss']
+            ttt_feedback['loss_value'] = loss
+            ttt_feedback['loss_gradient'] = loss.grad if loss.grad is not None else torch.tensor(0.0)
+        
+        return ttt_feedback
+    
+    def _compute_base_biases(self, num_tokens: int, gpu_stats: Dict[str, Any]) -> torch.Tensor:
+        """Compute base routing biases from kernel cost model."""
+        device = next(self.fast_weight_net.parameters()).device
+        biases = torch.zeros(self.num_experts, device=device)
+        
+        current_temp = gpu_stats.get('temperature', 50.0)
+        current_memory_util = gpu_stats.get('memory_utilization_percent', 0.0) / 100.0
+        
+        # Get expert operations for cost calculation
+        expert_ops = ["ffn_gate", "ffn_up", "ffn_down", "silu_gelu"]
+        if self.config.expert_type == "quantized":
+            expert_ops.extend(["quantize_w8a16", "dequantize_w8a16"])
+        
+        effective_expert_token_batch = num_tokens / self.top_k
+        
+        for expert_id in range(self.num_experts):
+            total_energy = 0.0
+            total_latency = 0.0
+            total_thermal_impact = 0.0
+            total_memory_gb = 0.0
+            
+            for op_name in expert_ops:
+                op_costs = self.kernel_cost_model.get_cost(
+                    op_name, int(effective_expert_token_batch),
+                    current_temp=current_temp, memory_pressure=current_memory_util
+                )
+                
+                total_energy += op_costs.get('energy_joules', 0.0)
+                total_latency += op_costs.get('latency_ms', 0.0)
+                total_thermal_impact += op_costs.get('temp_impact', 0.0)
+                total_memory_gb += op_costs.get('memory_gb', 0.0)
+            
+            # Compute biases (negative for minimization)
+            energy_bias = -total_energy * self.objective_weights['energy'] * 1000.0
+            thermal_bias = -total_thermal_impact * self.objective_weights['thermal'] * 100.0
+            performance_bias = -total_latency * self.objective_weights['performance'] * 10.0
+            memory_bias = -total_memory_gb * self.objective_weights['memory'] * 50.0
+            
+            biases[expert_id] = energy_bias + thermal_bias + performance_bias + memory_bias
+        
+        return biases
+    
+    def _compute_ttt_biases(self, base_biases: torch.Tensor, ttt_feedback: Dict[str, torch.Tensor], 
+                           gpu_stats: Dict[str, Any]) -> torch.Tensor:
+        """Compute TTT-based routing biases using fast weight network."""
+        device = base_biases.device
+        
+        # Prepare input features for fast weight network
+        # Combine base biases, TTT feedback, and hardware state
+        input_features = self._prepare_ttt_input_features(base_biases, ttt_feedback, gpu_stats)
+        
+        # Apply fast weight network
+        with torch.no_grad():
+            ttt_adjustments = self.fast_weight_net(input_features)
+        
+        # Scale adjustments based on current hardware state
+        current_temp = gpu_stats.get('temperature', 50.0)
+        current_power = gpu_stats.get('power_watt', 200.0)
+        
+        # Higher temperature/power -> more aggressive TTT adjustments
+        scaling_factor = 1.0 + max(0.0, (current_temp - 60.0) / 20.0) * 0.5
+        scaling_factor += max(0.0, (current_power - 200.0) / 100.0) * 0.3
+        
+        ttt_biases = base_biases + ttt_adjustments * scaling_factor * 0.5
+        
+        return ttt_biases
+    
+    def _prepare_ttt_input_features(self, base_biases: torch.Tensor, ttt_feedback: Dict[str, torch.Tensor], 
+                                   gpu_stats: Dict[str, Any]) -> torch.Tensor:
+        """Prepare input features for fast weight network."""
+        device = base_biases.device
+        features = []
+        
+        # Base biases
+        features.append(base_biases)
+        
+        # TTT feedback features
+        if 'gradient_norms' in ttt_feedback:
+            features.append(ttt_feedback['gradient_norms'])
+        else:
+            features.append(torch.zeros(self.num_experts, device=device))
+        
+        if 'activation_energy' in ttt_feedback:
+            features.append(ttt_feedback['activation_energy'])
+        else:
+            features.append(torch.zeros(self.num_experts, device=device))
+        
+        # Hardware state features
+        temp_feature = torch.full((self.num_experts,), gpu_stats.get('temperature', 50.0), device=device)
+        power_feature = torch.full((self.num_experts,), gpu_stats.get('power_watt', 200.0), device=device)
+        memory_feature = torch.full((self.num_experts,), gpu_stats.get('memory_utilization_percent', 0.0), device=device)
+        
+        features.extend([temp_feature, power_feature, memory_feature])
+        
+        # Concatenate all features
+        combined_features = torch.cat(features)
+        
+        # Pad or truncate to match fast weight network input dimension
+        if combined_features.numel() < self.config.d_model:
+            padding = torch.zeros(self.config.d_model - combined_features.numel(), device=device)
+            combined_features = torch.cat([combined_features, padding])
+        else:
+            combined_features = combined_features[:self.config.d_model]
+        
+        return combined_features.unsqueeze(0)  # Add batch dimension
+    
+    def _update_ttt_buffers(self, gate_logits: torch.Tensor, expert_indices: torch.Tensor, 
+                           gpu_stats: Dict[str, Any]) -> None:
+        """Update TTT buffers and potentially perform TTT update."""
+        # Add current batch to chunk buffers
+        self.chunk_buffer_k.append(gate_logits.detach())
+        self.chunk_buffer_v.append(expert_indices.float().detach())  # Convert indices to float for loss
+        
+        # Learning rate coefficients based on hardware state
+        current_temp = gpu_stats.get('temperature', 50.0)
+        current_power = gpu_stats.get('power_watt', 200.0)
+        
+        # Adaptive learning rate based on thermal/power state
+        base_lr = self.energy_aware_lr
+        if current_temp > 75.0:
+            base_lr *= 0.5  # Reduce LR under thermal stress
+        if current_power > 300.0:
+            base_lr *= 0.7  # Reduce LR under power stress
+        
+        lr_coeffs = torch.full((gate_logits.size(0), 3), base_lr, device=gate_logits.device)
+        self.chunk_buffer_lr_coeffs.append(lr_coeffs)
+        
+        self.tokens_since_last_update += gate_logits.size(0)
+        
+        # Check if TTT update should be performed
+        if (len(self.chunk_buffer_k) * gate_logits.size(0) >= self.ttt_chunk_size and 
+            self.tokens_since_last_update >= self.ttt_update_frequency):
+            self._perform_ttt_update()
+    
+    def _perform_ttt_update(self) -> None:
+        """Perform TTT update using accumulated chunk data."""
+        if not self.chunk_buffer_k:
+            return
+        
+        # Concatenate chunk data
+        chunk_k = torch.cat(self.chunk_buffer_k, dim=0)
+        chunk_v = torch.cat(self.chunk_buffer_v, dim=0)
+        chunk_lr_coeffs = torch.cat(self.chunk_buffer_lr_coeffs, dim=0)
+        
+        # Clear buffers
+        self.chunk_buffer_k.clear()
+        self.chunk_buffer_v.clear()
+        self.chunk_buffer_lr_coeffs.clear()
+        self.tokens_since_last_update = 0
+        
+        # Perform TTT update
+        self.ttt_optimizer.zero_grad()
+        
+        # Compute gradients for fast weights
+        fast_weight_grads = self.fast_weight_net.compute_update_gradients(
+            chunk_k, chunk_v, chunk_lr_coeffs
+        )
+        
+        # Apply gradients
+        for param_name, grad_tensor in fast_weight_grads.items():
+            param = getattr(self.fast_weight_net, param_name)
+            if param.grad is not None:
+                param.grad.data.zero_()
+            param.grad = grad_tensor
+        
+        # Optimizer step
+        self.ttt_optimizer.step()
+        if self.ttt_scheduler is not None:
+            self.ttt_scheduler.step()
+        
+        # Apply L2 weight normalization (as in LaCT)
+        with torch.no_grad():
+            for param in self.fast_weight_net.parameters():
+                if param.dim() > 1:
+                    param.data = F.normalize(param.data, p=2, dim=0)
+        
+        # Disable gradients after update
+        for param in self.fast_weight_net.parameters():
+            param.requires_grad_(False)
+        
+        self.ttt_update_count += 1
+        
+        logger.debug(f"TTT update performed. Update count: {self.ttt_update_count}")
+    
+    def update_energy_aware_loss(self, observed_metrics: Dict[str, float],
+                                target_power: float = 200.0,
+                                target_temp: float = 65.0,
+                                target_latency: float = 10.0) -> Dict[str, float]:
+        """
+        Update energy-aware loss function for TTT optimization.
+        
+        Args:
+            observed_metrics: Observed hardware and performance metrics
+            target_power: Target power consumption in Watts
+            target_temp: Target temperature in Celsius
+            target_latency: Target latency in milliseconds
+            
+        Returns:
+            Dictionary containing loss components
+        """
+        device = next(self.fast_weight_net.parameters()).device
+        
+        # Extract observed metrics
+        observed_power = observed_metrics.get('gpu_power_watt', target_power)
+        observed_temp = observed_metrics.get('gpu_temperature_c', target_temp)
+        observed_latency = observed_metrics.get('inference_latency_ms', target_latency)
+        observed_throughput = observed_metrics.get('throughput_tokens_per_sec', 1.0)
+        observed_memory_util = observed_metrics.get('memory_utilization_percent', 0.0) / 100.0
+        
+        # Calculate loss components
+        power_loss = max(0.0, observed_power - target_power) ** 2 / max(1.0, target_power ** 2)
+        temp_loss = max(0.0, observed_temp - target_temp) ** 2 / max(1.0, target_temp ** 2)
+        latency_penalty = max(0.0, observed_latency - target_latency) ** 2 / max(1.0, target_latency ** 2)
+        memory_penalty = max(0.0, observed_memory_util - 0.7) ** 2  # Target 70% memory utilization
+        
+        # Throughput bonus
+        throughput_bonus = min(1.0, observed_throughput / 1000.0)  # Normalize to reasonable range
+        
+        # Update exponential moving averages
+        self.ema_energy_loss = self.ema_decay * self.ema_energy_loss + (1 - self.ema_decay) * power_loss
+        self.ema_thermal_loss = self.ema_decay * self.ema_thermal_loss + (1 - self.ema_decay) * temp_loss
+        self.ema_performance_loss = self.ema_decay * self.ema_performance_loss + (1 - self.ema_decay) * latency_penalty
+        self.ema_memory_loss = self.ema_decay * self.ema_memory_loss + (1 - self.ema_decay) * memory_penalty
+        
+        # Combined loss
+        total_loss = (
+            self.ema_energy_loss * self.objective_weights['energy'] +
+            self.ema_thermal_loss * self.objective_weights['thermal'] +
+            self.ema_performance_loss * self.objective_weights['performance'] +
+            self.ema_memory_loss * self.objective_weights['memory'] -
+            throughput_bonus * self.objective_weights['performance'] * 0.1
+        )
+        
+        # Track energy savings and thermal improvements
+        if self.ttt_update_count > 0:
+            self.energy_savings_history.append(target_power - observed_power)
+            self.thermal_improvements_history.append(target_temp - observed_temp)
+        
+        return {
+            'total_loss': total_loss.item(),
+            'power_loss': power_loss,
+            'temp_loss': temp_loss,
+            'latency_penalty': latency_penalty,
+            'memory_penalty': memory_penalty,
+            'throughput_bonus': throughput_bonus,
+            'ttt_update_count': self.ttt_update_count
+        }
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive statistics about the energy-aware TTT router."""
+        stats = {
+            'ttt_update_count': self.ttt_update_count,
+            'fast_weight_dim': self.fast_weight_dim,
+            'chunk_size': self.ttt_chunk_size,
+            'update_frequency': self.ttt_update_frequency,
+            'muon_enabled': self.muon_enabled,
+            'objective_weights': self.objective_weights,
+            'ema_energy_loss': self.ema_energy_loss,
+            'ema_thermal_loss': self.ema_thermal_loss,
+            'ema_performance_loss': self.ema_performance_loss,
+            'ema_memory_loss': self.ema_memory_loss,
+        }
+        
+        if self.energy_savings_history:
+            stats['avg_energy_savings_watts'] = np.mean(self.energy_savings_history)
+            stats['avg_thermal_improvements_c'] = np.mean(self.thermal_improvements_history)
+        
+        return stats
+
+
+class EnergyPredictor(nn.Module):
+    """Predicts energy consumption for different expert configurations."""
+    
+    def __init__(self, num_experts: int, d_model: int, hidden_dim: int = 256):
+        super().__init__()
+        self.num_experts = num_experts
+        self.d_model = d_model
+        
+        self.energy_predictor = nn.Sequential(
+            nn.Linear(num_experts * 6, hidden_dim),  # 6 metrics per expert
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.GELU(),
+            nn.Linear(hidden_dim // 2, num_experts),
+            nn.Softplus()  # Positive energy predictions
+        )
+        
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """Initialize weights properly."""
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+    
+    def forward(self, expert_features: torch.Tensor) -> torch.Tensor:
+        """Predict energy consumption for each expert."""
+        return self.energy_predictor(expert_features)
+
+
+class ThermalAdaptiveScaler:
+    """Adaptively scales TTT adjustments based on thermal state."""
+    
+    def __init__(self, base_scaling: float = 1.0):
+        self.base_scaling = base_scaling
+        self.thermal_thresholds = {
+            'cool': 60.0,
+            'warm': 75.0,
+            'hot': 85.0,
+            'critical': 90.0
+        }
+    
+    def get_scaling_factor(self, gpu_stats: Dict[str, Any]) -> float:
+        """Get adaptive scaling factor based on thermal state."""
+        current_temp = gpu_stats.get('temperature', 50.0)
+        current_power = gpu_stats.get('power_watt', 200.0)
+        
+        # Base scaling from temperature
+        if current_temp < self.thermal_thresholds['cool']:
+            scaling = self.base_scaling
+        elif current_temp < self.thermal_thresholds['warm']:
+            scaling = self.base_scaling * 1.2  # Slightly more aggressive
+        elif current_temp < self.thermal_thresholds['hot']:
+            scaling = self.base_scaling * 1.5  # More aggressive
+        elif current_temp < self.thermal_thresholds['critical']:
+            scaling = self.base_scaling * 2.0  # Very aggressive
+        else:
+            scaling = self.base_scaling * 2.5  # Maximum aggression
+        
+        # Additional scaling from power
+        if current_power > 300.0:
+            scaling *= 1.3
+        elif current_power > 250.0:
+            scaling *= 1.1
+        
+        return scaling
+
+
+class StatisticalLoadBalancer:
+    """Provides statistical load balancing based on historical expert usage."""
+    
+    def __init__(self, num_experts: int, history_length: int = 100):
+        self.num_experts = num_experts
+        self.history_length = history_length
+        self.usage_history = deque(maxlen=history_length)
+        self.expert_usage_trends = torch.zeros(num_experts)
+    
+    def get_biases(self, gpu_stats: Dict[str, Any]) -> torch.Tensor:
+        """Get load balancing biases based on historical usage."""
+        if not self.usage_history:
+            return torch.zeros(self.num_experts)
+        
+        # Calculate current usage distribution
+        recent_usage = torch.stack(list(self.usage_history)[-10:])  # Last 10 entries
+        current_distribution = recent_usage.mean(dim=0)
+        
+        # Target uniform distribution
+        target_distribution = torch.ones(self.num_experts) / self.num_experts
+        
+        # Calculate biases to move towards uniform distribution
+        distribution_diff = target_distribution - current_distribution
+        
+        # Scale biases based on thermal state
+        current_temp = gpu_stats.get('temperature', 50.0)
+        scaling_factor = 1.0 + max(0.0, (current_temp - 60.0) / 20.0) * 0.5
+        
+        return distribution_diff * scaling_factor * 0.3  # Moderate load balancing effect
+    
+    def update_usage(self, expert_indices: torch.Tensor) -> None:
+        """Update usage history with new expert assignments."""
+        # expert_indices is [batch_size, top_k], flatten to count all assignments
+        flattened_indices = expert_indices.flatten()
+        
+        # Count tokens per expert
+        expert_counts = torch.zeros(self.num_experts)
+        for expert_id in range(self.num_experts):
+            expert_counts[expert_id] = (flattened_indices == expert_id).sum().float()
+        
+        # Normalize to distribution
+        total_tokens = expert_counts.sum()
+        if total_tokens > 0:
+            expert_distribution = expert_counts / total_tokens
+            self.usage_history.append(expert_distribution)
+            
+            # Update trends
+            alpha = 0.1
+            self.expert_usage_trends = (1 - alpha) * self.expert_usage_trends + alpha * expert_distribution
+
+
+class MuonOptimizer:
+    """
+    Muon optimizer for fast weight updates, as described in the LaCT paper.
+    This implements the Muon update rule for orthogonalizing gradients.
+    """
+    
+    def __init__(self, params, lr: float = 1e-4, momentum: float = 0.9, num_iterations: int = 5):
+        self.params = list(params)
+        self.lr = lr
+        self.momentum = momentum
+        self.num_iterations = num_iterations
+        self.momentum_buffer = {}
+        
+        # Muon constants (from LaCT paper)
+        self.a = 3.4445
+        self.b = -4.7750
+        self.c = 2.0315
+    
+    def zero_grad(self):
+        """Zero gradients for all parameters."""
+        for param in self.params:
+            if param.grad is not None:
+                param.grad.data.zero_()
+    
+    def step(self):
+        """Perform Muon update step."""
+        for param in self.params:
+            if param.grad is None:
+                continue
+            
+            grad = param.grad.data
+            
+            # Apply momentum
+            if param not in self.momentum_buffer:
+                self.momentum_buffer[param] = torch.zeros_like(grad)
+            
+            self.momentum_buffer[param] = self.momentum * self.momentum_buffer[param] + grad
+            
+            # Apply Muon orthogonalization
+            muon_grad = self._apply_muon(self.momentum_buffer[param])
+            
+            # Update parameter
+            param.data -= self.lr * muon_grad
+    
+    def _apply_muon(self, grad: torch.Tensor) -> torch.Tensor:
+        """Apply Muon orthogonalization to gradient."""
+        if grad.dim() != 2:  # Muon only works on 2D matrices
+            return grad
+        
+        # Normalize gradient
+        grad_norm = grad.norm()
+        if grad_norm > 0:
+            G = grad / grad_norm
+        else:
+            return grad
+        
+        # Newton-Schulz iterations for orthogonalization
+        for _ in range(self.num_iterations):
+            G_squared = G @ G.T
+            G_cubed = G_squared @ G
+            G = self.a * G + self.b * G_cubed + self.c * (G_squared @ G_cubed)
+        
+        return G * grad_norm  # Scale back to original magnitude
+
 
 # Utility functions for advanced router factory
 def create_router_factory(config: Dict[str, Any]) -> callable:
