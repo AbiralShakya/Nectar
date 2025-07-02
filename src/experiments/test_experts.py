@@ -9,10 +9,10 @@ import math
 # Add the src directory to PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from moe_models import MoEConfig, SwiGLUExpert, OptimizedQuantizedExpert, LaCTMoEExpert
+from src.moe_models import MoEConfig, SwiGLUExpert, OptimizedQuantizedExpert, LaCTMoEExpert
 from routers import AdaptiveRouter, RoutingStrategy, HardwareMetrics # Not directly used but good to have
-from kernelcostmodel import KernelCostModel # Not directly used but good to have
-from monitor import GpuSystemMonitor # Not directly used but good to have
+from src.kernelcostmodel import KernelCostModel # Not directly used but good to have
+from src.monitor import GpuSystemMonitor # Not directly used but good to have
 
 
 print("--- Testing Expert Modules ---")

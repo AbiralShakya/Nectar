@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 try:
-    from kernelcostmodel import KernelCostModel
+    from src.kernelcostmodel import KernelCostModel
     print("✅ Successfully imported KernelCostModel")
 except ImportError as e:
     print(f"❌ Error importing KernelCostModel: {e}")

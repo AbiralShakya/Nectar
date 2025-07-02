@@ -61,6 +61,9 @@ class MockKernelCostModel:
             'memory': float(self.mock_costs['memory'][expert_id].mean())
         }
 
+    def get_cost(self, op_name, batch_size, **kwargs):
+        return {"energy_joules": 0.001, "latency_ms": 0.01, "temp_impact": 0.0}
+
 
 class TestEnergyAwareTTTRouter(unittest.TestCase):
     """Test cases for EnergyAwareTTTRouter."""
@@ -119,15 +122,10 @@ class TestEnergyAwareTTTRouter(unittest.TestCase):
         batch_size = 32
         d_model = self.moe_config.d_model
         x = torch.randn(batch_size, d_model).to(self.device)
-        
-        # Test forward pass
+        self.router.set_fast_weight_requires_grad(True)
         output = self.router.fast_weight_net(x)
         self.assertEqual(output.shape, (batch_size, d_model))
-        
-        # Test gradient computation
         output.sum().backward()
-        
-        # Check that gradients are computed
         for param in self.router.fast_weight_net.parameters():
             self.assertIsNotNone(param.grad)
     
@@ -157,15 +155,10 @@ class TestEnergyAwareTTTRouter(unittest.TestCase):
     def test_energy_predictor(self):
         """Test energy prediction component."""
         batch_size = 32
-        d_model = self.moe_config.d_model
-        expert_features = torch.randn(batch_size, d_model).to(self.device)
-        
-        # Test forward pass
+        expert_features = torch.randn(batch_size, self.moe_config.num_experts * 6).to(self.device)
         energy_predictions = self.router.energy_predictor(expert_features)
-        
-        # Check output shape and values
         self.assertEqual(energy_predictions.shape, (batch_size, self.moe_config.num_experts))
-        self.assertTrue(torch.all(energy_predictions >= 0))  # Energy should be positive
+        self.assertTrue(torch.all(energy_predictions >= 0))
     
     def test_thermal_adaptive_scaler(self):
         """Test thermal adaptive scaling."""
@@ -293,27 +286,18 @@ class TestEnergyAwareTTTRouter(unittest.TestCase):
         """Test TTT buffer management and updates."""
         batch_size = 32
         seq_length = 64
-        
-        # Create inputs
-        gate_logits = torch.randn(batch_size, seq_length, self.moe_config.num_experts).to(self.device)
-        expert_indices = torch.randint(0, self.moe_config.num_experts, 
-                                     (batch_size, seq_length, self.moe_config.top_k)).to(self.device)
+        d_model = self.moe_config.d_model
+        gate_logits = torch.randn(batch_size * seq_length, d_model).to(self.device)
+        # Use random values for v with shape [N, d_model]
+        expert_indices = torch.randn(batch_size * seq_length, d_model).to(self.device)
         gpu_stats = self.gpu_monitor.get_current_stats()
-        
-        # Add multiple batches to buffer
         for _ in range(5):
             self.router._update_ttt_buffers(gate_logits, expert_indices, gpu_stats)
-        
-        # Check buffer state
         self.assertGreater(len(self.router.chunk_buffer_k), 0)
         self.assertGreater(len(self.router.chunk_buffer_v), 0)
         self.assertGreater(len(self.router.chunk_buffer_lr_coeffs), 0)
-        
-        # Test TTT update
         initial_update_count = self.router.ttt_update_count
         self.router._perform_ttt_update()
-        
-        # Check that update was performed
         self.assertGreater(self.router.ttt_update_count, initial_update_count)
     
     def test_router_statistics(self):

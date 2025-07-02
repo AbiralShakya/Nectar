@@ -28,10 +28,10 @@ import json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from moe_models import MoEConfig, MoETransformerBlock
+from src.moe_models import MoEConfig, MoETransformerBlock
 from routers import RoutingStrategy, AdaptiveRouter, BatchDistributionTracker
-from kernelcostmodel import KernelCostModel
-from monitor import GpuSystemMonitor
+from src.kernelcostmodel import KernelCostModel
+from src.monitor import GpuSystemMonitor
 from data_utils import DataLoaderManager
 from metrics_logger import MetricsLogger
 

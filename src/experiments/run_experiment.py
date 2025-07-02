@@ -6,7 +6,7 @@ import torch.nn as nn
 from datetime import datetime
 import time
 from moe_models import MoETransformerBlock, compute_energy_loss
-from kernelcostmodel import KernelCostModel
+from src.kernelcostmodel import KernelCostModel
 # Ensure src directory is in PYTHONPATH for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 

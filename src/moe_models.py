@@ -8,8 +8,8 @@ from typing import Dict, Tuple, Any, Optional, List, DefaultDict
 from dataclasses import dataclass, field
 
 # Import NECTAR components (GpuSystemMonitor, KernelCostModel are fine at top level)
-from monitor import GpuSystemMonitor
-from kernelcostmodel import KernelCostModel
+from src.monitor import GpuSystemMonitor
+from src.kernelcostmodel import KernelCostModel
 
 @dataclass
 class MoEConfig:

@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Tuple, Optional
 import re 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
-from moe_models import KernelCostModel 
+from src.moe_models import KernelCostModel 
 
 def inspect_sqlite_schema(sqlite_path: str) -> List[str]:
     """

@@ -11,9 +11,9 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from routers import RoutingStrategy, BatchDistributionTracker
-from moe_models import MoEConfig
-from kernelcostmodel import KernelCostModel
-from monitor import GpuSystemMonitor
+from src.moe_models import MoEConfig
+from src.kernelcostmodel import KernelCostModel
+from src.monitor import GpuSystemMonitor
 
 def test_batch_distribution_tracker():
     """Test the BatchDistributionTracker functionality."""

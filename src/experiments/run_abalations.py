@@ -9,9 +9,9 @@ from typing import Dict, Tuple, Any, List
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from moe_models import MoEConfig, MoETransformerBlock, OptimizedMoELayer, SwiGLUExpert, OptimizedQuantizedExpert
+from src.moe_models import MoEConfig, MoETransformerBlock, OptimizedMoELayer, SwiGLUExpert, OptimizedQuantizedExpert
 from routers import RoutingStrategy, GpuSystemMonitor, AdaptiveRouter
-from kernelcostmodel import KernelCostModel
+from src.kernelcostmodel import KernelCostModel
 from data_utils import DataLoaderManager
 from metrics_logger import MetricsLogger
 
