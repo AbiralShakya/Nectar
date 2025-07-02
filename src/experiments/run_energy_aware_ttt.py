@@ -338,49 +338,67 @@ class EnergyAwareTTTExperiment:
 
 
 def main():
-    # This script runs with synthetic data: all inputs (gate_logits, labels, etc.) are randomly generated tensors.
-    # This is for demonstration and testing only; replace with real data for real experiments.
     import torch
     import time
-    from src.moe_models import MoEConfig
+    import os
+    import argparse
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from datasets import load_dataset
+    from torch.utils.data import DataLoader
+    import torch.nn as nn
+    from torch.cuda.amp import autocast, GradScaler
     from src.routers import EnergyAwareTTTRouter
     from src.moe_models import CapacityBasedRouter
     from src.kernelcostmodel import KernelCostModel
     from src.monitor import GpuSystemMonitor
-    import argparse
 
-    parser = argparse.ArgumentParser(description="Energy-aware router vs baseline experiment")
+    parser = argparse.ArgumentParser(description="Energy-aware router vs baseline experiment (real text)")
     parser.add_argument('--results_dir', type=str, default=None, help='Directory to save results CSV (default: auto or current directory)')
+    parser.add_argument('--batch_size', type=int, default=8)
+    parser.add_argument('--seq_length', type=int, default=64)
+    parser.add_argument('--num_experts', type=int, default=4)
+    parser.add_argument('--num_batches', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=1)
     args = parser.parse_args()
 
-    # Determine results directory
+    # Device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Results directory
     results_dir = args.results_dir
     if results_dir is None:
-        # Try to auto-detect from environment or use current directory
         results_dir = os.environ.get('RESULTS_DIR', os.getcwd())
     os.makedirs(results_dir, exist_ok=True)
     csv_file = os.path.join(results_dir, 'energy_comparison_results.csv')
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # Config matches the test
-    moe_config = MoEConfig(
-        d_model=768,
-        num_experts=8,
-        top_k=2,
-        dropout=0.1,
-        use_bias=False,
-        activation="swiglu",
-        expert_dropout=0.0,
-        use_grouped_gemm=True,
-        load_balance_weight=0.01,
-        router_z_loss_weight=0.001,
-        capacity_factor=1.25,
-        expert_type="simple"
-    )
+    # Model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
+    model = AutoModelForCausalLM.from_pretrained("distilgpt2").to(device)
+    model.eval()
+    vocab_size = tokenizer.vocab_size
+
+    # Gate head to map logits to num_experts
+    gate_head = nn.Linear(vocab_size, args.num_experts).to(device)
+    gate_head.eval()
+
+    # DataLoader: WikiText-2, real text
+    ds = load_dataset("wikitext", "wikitext-2-raw-v1", split="train[:1%]")
+    seq_length = args.seq_length
+    batch_size = args.batch_size
+    ds = ds.filter(lambda x: len(x["text"].split()) > 5)
+    def tokenize_batch(batch):
+        toks = tokenizer(batch["text"], return_tensors="pt",
+                         padding="max_length", truncation=True,
+                         max_length=seq_length)
+        return {"input_ids": toks.input_ids, "labels": toks.input_ids}
+    ds = ds.map(tokenize_batch, batched=True, remove_columns=["text"])
+    dataloader = DataLoader(ds, batch_size=batch_size)
+
+    # Routers and hardware monitor
     kernel_cost_model = KernelCostModel()
     gpu_monitor = GpuSystemMonitor()
     router = EnergyAwareTTTRouter(
-        config=moe_config,
+        config=None,  # Not used in this minimal demo
         kernel_cost_model=kernel_cost_model,
         gpu_system_monitor=gpu_monitor,
         ttt_chunk_size=32,
@@ -388,42 +406,40 @@ def main():
         energy_aware_lr=1e-4,
         muon_enabled=True
     ).to(device)
-    baseline_router = CapacityBasedRouter(
-        config=moe_config
-    ).to(device)
+    baseline_router = CapacityBasedRouter(config=None).to(device)
 
-    batch_size = 32
-    seq_length = 64
-    num_epochs = 3
-    num_batches = 10
-    d_model = moe_config.d_model
-    num_experts = moe_config.num_experts
-    num_classes = num_experts  # for synthetic accuracy
+    scaler = GradScaler()
 
     # Prepare CSV file with human-readable headers
     with open(csv_file, 'w', newline='') as f:
         writer = csv.writer(f)
-        # Write a comment header for human readers
-        f.write('# Energy-aware MoE vs Baseline experiment results\n')
+        f.write('# Energy-aware MoE vs Baseline experiment results (real text)\n')
         f.write('# Columns: Epoch, Batch, Router Type, Loss, Power Loss (W), Temp Loss (C), Latency Penalty (ms), Memory Penalty, Throughput Bonus, TTT Update Count, Accuracy\n')
         writer.writerow([
             'Epoch', 'Batch', 'Router Type', 'Loss', 'Power Loss (W)', 'Temp Loss (C)', 'Latency Penalty (ms)',
             'Memory Penalty', 'Throughput Bonus', 'TTT Update Count', 'Accuracy'
         ])
 
-        print("Running EnergyAwareTTTRouter and Baseline CapacityBasedRouter experiment with synthetic data...")
-        for epoch in range(num_epochs):
-            for batch_idx in range(num_batches):
-                gate_logits = torch.randn(batch_size, seq_length, num_experts).to(device)
-                num_tokens = batch_size * seq_length
+        print("Running EnergyAwareTTTRouter and Baseline CapacityBasedRouter experiment with real text data...")
+        for epoch in range(args.num_epochs):
+            for batch_idx, batch in enumerate(dataloader):
+                if batch_idx >= args.num_batches:
+                    break
+                input_ids = batch["input_ids"].to(device)
+                labels = batch["labels"].to(device)
+                with torch.no_grad():
+                    with autocast():
+                        outputs = model(input_ids)
+                        logits = outputs.logits  # [B, S, V]
+                        gate_logits = gate_head(logits)  # [B, S, num_experts]
+                num_tokens = input_ids.numel()
                 context = {
-                    'gradients': [torch.randn(batch_size, d_model).to(device)],
-                    'activations': [torch.randn(batch_size, d_model).to(device)],
+                    'gradients': [torch.randn(batch_size, logits.size(-1)).to(device)],  # placeholder
+                    'activations': [logits.detach()],
                     'loss': torch.tensor(2.0).to(device)
                 }
-                # Simulate true labels for accuracy (random for synthetic)
-                true_labels = torch.randint(0, num_classes, (batch_size, seq_length)).to(device)
-
+                # Simulate true labels for accuracy (next-token prediction)
+                true_labels = labels
                 # Energy-aware router
                 start = time.time()
                 expert_indices, routing_weights, metadata = router(
@@ -449,15 +465,12 @@ def main():
                     f"{acc:.3f}"
                 ])
 
-                # CapacityBasedRouter expects token embeddings [N_tokens, d_model],
-                # not logits. We'll use a dummy embedding here for demonstration.
-                N = batch_size * seq_length
-                dummy_embeddings = torch.randn(N, d_model, device=device)
-                # it actually returns (indices, weights, [optional metadata])
+                # Baseline router
+                N = input_ids.size(0) * input_ids.size(1)
+                dummy_embeddings = torch.randn(N, logits.size(-1), device=device)
                 base_out = baseline_router(dummy_embeddings)
                 base_indices, base_weights = base_out[0], base_out[1]
-                base_indices = base_indices.view(batch_size, seq_length, -1)
-                # define a synthetic loss for the baseline
+                base_indices = base_indices.view(input_ids.size(0), input_ids.size(1), -1)
                 base_loss = torch.randn(1).item() + 1.0
                 base_pred = base_indices[..., 0]
                 base_acc = (base_pred == true_labels).float().mean().item()
