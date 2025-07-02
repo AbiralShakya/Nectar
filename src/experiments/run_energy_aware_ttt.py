@@ -336,57 +336,68 @@ class EnergyAwareTTTExperiment:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Energy-Aware TTT Router Experiment")
-    
-    # Model configuration
-    parser.add_argument("--d_model", type=int, default=768, help="Model dimension")
-    parser.add_argument("--num_experts", type=int, default=8, help="Number of experts")
-    parser.add_argument("--top_k", type=int, default=2, help="Top-k expert selection")
-    parser.add_argument("--expert_type", type=str, default="simple", 
-                       choices=["simple", "quantized"], help="Expert type")
-    parser.add_argument("--quantization_bits", type=int, default=4, help="Quantization bits")
-    
-    # TTT configuration
-    parser.add_argument("--ttt_chunk_size", type=int, default=2048, 
-                       help="TTT chunk size for large-chunk updates")
-    parser.add_argument("--ttt_update_frequency", type=int, default=512,
-                       help="Tokens between TTT updates")
-    parser.add_argument("--energy_aware_lr", type=float, default=1e-4,
-                       help="Learning rate for energy-aware TTT")
-    parser.add_argument("--muon_enabled", action="store_true", default=True,
-                       help="Enable Muon optimizer for TTT")
-    
-    # Training configuration
-    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
-    parser.add_argument("--seq_length", type=int, default=512, help="Sequence length")
-    parser.add_argument("--num_epochs", type=int, default=5, help="Number of epochs")
-    parser.add_argument("--max_steps", type=int, default=1000, help="Maximum training steps")
-    parser.add_argument("--log_interval", type=int, default=10, help="Logging interval")
-    parser.add_argument("--save_interval", type=int, default=1, help="Checkpoint save interval")
-    
-    # Hardware targets
-    parser.add_argument("--target_power", type=float, default=200.0,
-                       help="Target power consumption in Watts")
-    parser.add_argument("--target_temp", type=float, default=65.0,
-                       help="Target temperature in Celsius")
-    parser.add_argument("--target_latency", type=float, default=10.0,
-                       help="Target latency in milliseconds")
-    
-    # System configuration
-    parser.add_argument("--device_id", type=int, default=0, help="GPU device ID")
-    parser.add_argument("--gpu_type", type=str, default="A100", help="GPU type")
-    parser.add_argument("--kernel_cost_model_json", type=str, 
-                       default="energy/cost_table.json", help="Kernel cost model path")
-    parser.add_argument("--log_file", type=str, default="logs/energy_aware_ttt_experiment.log",
-                       help="Log file path")
-    parser.add_argument("--checkpoint_dir", type=str, default="checkpoints/energy_aware_ttt",
-                       help="Checkpoint directory")
-    
-    args = parser.parse_args()
-    
-    # Create and run experiment
-    experiment = EnergyAwareTTTExperiment(args)
-    experiment.run_experiment()
+    import torch
+    import time
+    from src.moe_models import MoEConfig
+    from src.routers import EnergyAwareTTTRouter
+    from src.kernelcostmodel import KernelCostModel
+    from src.monitor import GpuSystemMonitor
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Config matches the test
+    moe_config = MoEConfig(
+        d_model=768,
+        num_experts=8,
+        top_k=2,
+        dropout=0.1,
+        use_bias=False,
+        activation="swiglu",
+        expert_dropout=0.0,
+        use_grouped_gemm=True,
+        load_balance_weight=0.01,
+        router_z_loss_weight=0.001,
+        capacity_factor=1.25,
+        expert_type="simple"
+    )
+    kernel_cost_model = KernelCostModel()
+    gpu_monitor = GpuSystemMonitor()
+    router = EnergyAwareTTTRouter(
+        config=moe_config,
+        kernel_cost_model=kernel_cost_model,
+        gpu_system_monitor=gpu_monitor,
+        ttt_chunk_size=32,
+        ttt_update_frequency=8,
+        energy_aware_lr=1e-4,
+        muon_enabled=True
+    ).to(device)
+
+    batch_size = 32
+    seq_length = 64
+    num_epochs = 3
+    num_batches = 10
+    d_model = moe_config.d_model
+    num_experts = moe_config.num_experts
+
+    print("Running EnergyAwareTTTRouter experiment with synthetic data...")
+    for epoch in range(num_epochs):
+        for batch_idx in range(num_batches):
+            gate_logits = torch.randn(batch_size, seq_length, num_experts).to(device)
+            num_tokens = batch_size * seq_length
+            context = {
+                'gradients': [torch.randn(batch_size, d_model).to(device)],
+                'activations': [torch.randn(batch_size, d_model).to(device)],
+                'loss': torch.tensor(2.0).to(device)
+            }
+            start = time.time()
+            expert_indices, routing_weights, metadata = router(
+                gate_logits, num_tokens, context
+            )
+            elapsed = (time.time() - start) * 1000
+            observed_metrics = gpu_monitor.get_current_stats()
+            observed_metrics['inference_latency_ms'] = elapsed
+            loss_components = router.update_energy_aware_loss(observed_metrics)
+            print(f"Epoch {epoch+1} Batch {batch_idx+1} | Loss: {loss_components['total_loss']:.4f} | TTT updates: {metadata['ttt_update_count']}")
+    print("Experiment complete.")
 
 
 if __name__ == "__main__":

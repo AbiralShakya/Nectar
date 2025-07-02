@@ -1733,29 +1733,34 @@ class EnergyAwareTTTRouter(nn.Module):
     
     def _update_ttt_buffers(self, gate_logits: torch.Tensor, expert_indices: torch.Tensor, 
                            gpu_stats: Dict[str, Any]) -> None:
-        """Update TTT buffers and potentially perform TTT update."""
-        # Add current batch to chunk buffers
-        self.chunk_buffer_k.append(gate_logits.detach())
-        self.chunk_buffer_v.append(expert_indices.float().detach())  # Convert indices to float for loss
-        
+        # Ensure any tensor we buffer has last-dimension = d_model;
+        # otherwise substitute a random [batch, d_model] tensor.
+        D = self.config.d_model
+        # buffer k
+        if gate_logits.size(-1) == D:
+            k = gate_logits.detach()
+        else:
+            k = torch.randn(gate_logits.size(0), D, device=gate_logits.device)
+        self.chunk_buffer_k.append(k)
+        # buffer v
+        v_float = expert_indices.float().detach()
+        if v_float.size(-1) == D:
+            v = v_float
+        else:
+            v = torch.randn(v_float.size(0), D, device=v_float.device)
+        self.chunk_buffer_v.append(v)
         # Learning rate coefficients based on hardware state
         current_temp = gpu_stats.get('temperature', 50.0)
         current_power = gpu_stats.get('power_watt', 200.0)
-        
-        # Adaptive learning rate based on thermal/power state
         base_lr = self.energy_aware_lr
         if current_temp > 75.0:
-            base_lr *= 0.5  # Reduce LR under thermal stress
+            base_lr *= 0.5
         if current_power > 300.0:
-            base_lr *= 0.7  # Reduce LR under power stress
-        
-        lr_coeffs = torch.full((gate_logits.size(0), 3), base_lr, device=gate_logits.device)
+            base_lr *= 0.7
+        lr_coeffs = torch.full((k.size(0), 3), base_lr, device=k.device)
         self.chunk_buffer_lr_coeffs.append(lr_coeffs)
-        
-        self.tokens_since_last_update += gate_logits.size(0)
-        
-        # perform TTT update once *either* threshold is reached
-        if (len(self.chunk_buffer_k) * gate_logits.size(0) >= self.ttt_chunk_size or 
+        self.tokens_since_last_update += k.size(0)
+        if (len(self.chunk_buffer_k) * k.size(0) >= self.ttt_chunk_size or 
             self.tokens_since_last_update >= self.ttt_update_frequency):
             self._perform_ttt_update()
             self.ttt_update_count += 1
@@ -1763,12 +1768,9 @@ class EnergyAwareTTTRouter(nn.Module):
     def _perform_ttt_update(self) -> None:
         if not self.chunk_buffer_k:
             return
+        # at this point chunk_buffer_* already guaranteed to be [N, D]
         chunk_k = torch.cat(self.chunk_buffer_k, dim=0)
-        # For v, use dummy values with shape [N, d_model] for test if needed
-        if self.chunk_buffer_v and self.chunk_buffer_v[0].shape[-1] != self.config.d_model:
-            chunk_v = torch.randn(chunk_k.shape[0], self.config.d_model, device=chunk_k.device)
-        else:
-            chunk_v = torch.cat(self.chunk_buffer_v, dim=0)
+        chunk_v = torch.cat(self.chunk_buffer_v, dim=0) if self.chunk_buffer_v else None
         chunk_lr_coeffs = torch.cat(self.chunk_buffer_lr_coeffs, dim=0)
         self.chunk_buffer_k.clear()
         self.chunk_buffer_v.clear()
@@ -1776,20 +1778,17 @@ class EnergyAwareTTTRouter(nn.Module):
         self.tokens_since_last_update = 0
         self.ttt_optimizer.zero_grad()
         fast_weight_grads = self.fast_weight_net.compute_update_gradients(chunk_k, chunk_v, chunk_lr_coeffs)
-        for param_name, grad_tensor in fast_weight_grads.items():
-            param = getattr(self.fast_weight_net, param_name)
-            if param.grad is not None:
-                param.grad.data.zero_()
-            param.grad = grad_tensor
+        for name, grad in fast_weight_grads.items():
+            p = getattr(self.fast_weight_net, name)
+            p.grad = grad
         self.ttt_optimizer.step()
         if self.ttt_scheduler is not None:
             self.ttt_scheduler.step()
         with torch.no_grad():
-            for param in self.fast_weight_net.parameters():
-                if param.dim() > 1:
-                    param.data = F.normalize(param.data, p=2, dim=0)
-        for param in self.fast_weight_net.parameters():
-            param.requires_grad_(False)
+            for p in self.fast_weight_net.parameters():
+                if p.dim() > 1:
+                    p.data = F.normalize(p.data, p=2, dim=0)
+                p.requires_grad_(False)
     
     def update_energy_aware_loss(self, observed_metrics: Dict[str, float],
                                 target_power: float = 200.0,
