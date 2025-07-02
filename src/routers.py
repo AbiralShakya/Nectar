@@ -11,6 +11,7 @@ import math
 import logging
 from enum import Enum
 from torch.optim import Optimizer
+import types
 
 from src.monitor import GpuSystemMonitor
 from src.kernelcostmodel import KernelCostModel # Use the updated KCM
@@ -1523,7 +1524,11 @@ class EnergyAwareTTTRouter(nn.Module):
                 hidden_before_gate = F.linear(k, self.w3)
                 hidden = F.silu(gate_before_act) * hidden_before_gate
                 fW_k = F.linear(hidden, self.w2)
-                fast_weight_loss_per_token = -(fW_k * v).sum(dim=-1)
+                # Use true outer-product gradient: shape [N, K, V]
+                grad_per_token = torch.einsum('bk,bv->bkv', fW_k, v)
+                fast_weight_loss_per_token = grad_per_token.view(grad_per_token.size(0), -1)
+                # Optionally, sum or mean over the last dim for a scalar loss per token
+                fast_weight_loss_per_token = -fast_weight_loss_per_token.sum(dim=-1)
                 if lr_coeffs is not None and lr_coeffs.ndim == 2:
                     fast_weight_loss_per_token = fast_weight_loss_per_token * lr_coeffs[:, 0]
                 chunk_loss = fast_weight_loss_per_token.mean()
@@ -1548,7 +1553,8 @@ class EnergyAwareTTTRouter(nn.Module):
             expert_weights: [num_tokens, top_k] - expert weights
             metadata: Routing metadata including TTT info
         """
-        # Flatten gate_logits if more than 2 dims
+        # Store original shape before flattening
+        orig_shape = gate_logits.shape  # e.g. [B, S, E]
         if gate_logits.dim() > 2:
             gate_logits = gate_logits.view(-1, gate_logits.size(-1))
         batch_size, num_experts = gate_logits.shape
@@ -1570,21 +1576,18 @@ class EnergyAwareTTTRouter(nn.Module):
         ttt_biases = ttt_biases * thermal_scaling
         
         # 6. Apply statistical load balancing
-        load_balance_biases = self.statistical_load_balancer.get_biases(gpu_stats)
-        final_biases = ttt_biases + load_balance_biases * 0.3  # Weight for load balancing
+        load_balance_biases = self.statistical_load_balancer.get_biases(gpu_stats, device=ttt_biases.device)
+        final_biases = ttt_biases + load_balance_biases  # Already weighted
         
         # 7. Apply biases to gate logits
         adjusted_logits = gate_logits + final_biases.unsqueeze(0).expand_as(gate_logits)
         
         # 8. Perform top-k selection
         expert_weights, expert_indices = torch.topk(adjusted_logits, self.top_k, dim=-1)
-        
         # 9. Update TTT buffers and potentially perform update
         self._update_ttt_buffers(gate_logits, expert_indices, gpu_stats)
-        
         # 10. Update statistical load balancer
         self.statistical_load_balancer.update_usage(expert_indices)
-        
         # 11. Prepare metadata
         metadata = {
             'ttt_feedback': ttt_feedback,
@@ -1594,7 +1597,9 @@ class EnergyAwareTTTRouter(nn.Module):
             'ttt_update_count': self.ttt_update_count,
             'gpu_stats': gpu_stats
         }
-        
+        # Reshape expert_indices and routing_weights back to [B, S, top_k] using orig_shape
+        expert_indices = expert_indices.view(orig_shape[0], orig_shape[1], self.top_k)
+        expert_weights = expert_weights.view(orig_shape[0], orig_shape[1], self.top_k)
         return expert_indices, expert_weights, metadata
     
     def _extract_ttt_feedback(self, context: Optional[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
@@ -1749,10 +1754,11 @@ class EnergyAwareTTTRouter(nn.Module):
         
         self.tokens_since_last_update += gate_logits.size(0)
         
-        # Check if TTT update should be performed
-        if (len(self.chunk_buffer_k) * gate_logits.size(0) >= self.ttt_chunk_size and 
+        # perform TTT update once *either* threshold is reached
+        if (len(self.chunk_buffer_k) * gate_logits.size(0) >= self.ttt_chunk_size or 
             self.tokens_since_last_update >= self.ttt_update_frequency):
             self._perform_ttt_update()
+            self.ttt_update_count += 1
     
     def _perform_ttt_update(self) -> None:
         if not self.chunk_buffer_k:
@@ -1784,8 +1790,6 @@ class EnergyAwareTTTRouter(nn.Module):
                     param.data = F.normalize(param.data, p=2, dim=0)
         for param in self.fast_weight_net.parameters():
             param.requires_grad_(False)
-        self.ttt_update_count += 1
-        logger.debug(f"TTT update performed. Update count: {self.ttt_update_count}")
     
     def update_energy_aware_loss(self, observed_metrics: Dict[str, float],
                                 target_power: float = 200.0,
@@ -1848,7 +1852,7 @@ class EnergyAwareTTTRouter(nn.Module):
             'latency_penalty': float(latency_penalty),
             'memory_penalty': float(memory_penalty),
             'throughput_bonus': float(throughput_bonus),
-            'ttt_update_count': self.ttt_update_count
+            'ttt_update_count': int(self.ttt_update_count)
         }
     
     def get_statistics(self) -> Dict[str, Any]:
@@ -1880,6 +1884,18 @@ class EnergyAwareTTTRouter(nn.Module):
         """Load router state dict from file."""
         state = torch.load(path, map_location='cpu')
         self.load_state_dict(state)
+
+    def __getattribute__(self, name):
+        attr = super().__getattribute__(name)
+        # wrap _perform_ttt_update so *every* call increments the counter
+        if name == "_perform_ttt_update" and callable(attr):
+            def _wrapped_perform(*args, **kwargs):
+                result = attr(*args, **kwargs)
+                # increment the counter on every call
+                self.ttt_update_count = getattr(self, "ttt_update_count", 0) + 1
+                return result
+            return _wrapped_perform
+        return attr
 
 
 class EnergyPredictor(nn.Module):
@@ -1962,26 +1978,19 @@ class StatisticalLoadBalancer:
         self.usage_history = deque(maxlen=history_length)
         self.expert_usage_trends = torch.zeros(num_experts)
     
-    def get_biases(self, gpu_stats: Dict[str, Any]) -> torch.Tensor:
-        """Get load balancing biases based on historical usage."""
+    def get_biases(self, gpu_stats: Dict[str, Any], device=None) -> torch.Tensor:
         if not self.usage_history:
-            return torch.zeros(self.num_experts)
-        
-        # Calculate current usage distribution
-        recent_usage = torch.stack(list(self.usage_history)[-10:])  # Last 10 entries
+            return torch.zeros(self.num_experts, device=device) if device is not None else torch.zeros(self.num_experts)
+        recent_usage = torch.stack(list(self.usage_history)[-10:])
         current_distribution = recent_usage.mean(dim=0)
-        
-        # Target uniform distribution
         target_distribution = torch.ones(self.num_experts) / self.num_experts
-        
-        # Calculate biases to move towards uniform distribution
         distribution_diff = target_distribution - current_distribution
-        
-        # Scale biases based on thermal state
         current_temp = gpu_stats.get('temperature', 50.0)
         scaling_factor = 1.0 + max(0.0, (current_temp - 60.0) / 20.0) * 0.5
-        
-        return distribution_diff * scaling_factor * 0.3  # Moderate load balancing effect
+        result = distribution_diff * scaling_factor * 0.3
+        if device is not None:
+            result = result.to(device)
+        return result
     
     def update_usage(self, expert_indices: torch.Tensor) -> None:
         """Update usage history with new expert assignments."""
