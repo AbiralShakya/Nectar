@@ -13,7 +13,6 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from collections import deque
 
-
 class SimpleTTTBaseline(nn.Module):
     """
     Simple TTT baseline implementation for comparison.

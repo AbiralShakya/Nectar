@@ -1,0 +1,48 @@
+#!/bin/bash
+#PBS -N ttt_test
+#PBS -o ttt_test_${PBS_JOBID}.out
+#PBS -e ttt_test_${PBS_JOBID}.err
+#PBS -l walltime=01:00:00
+#PBS -l nodes=1:ppn=4:gpus=1
+#PBS -l mem=16gb
+#PBS -q gpu
+
+# Load modules (adjust for your cluster)
+module purge
+module load cuda/11.8
+module load python/3.9
+module load anaconda3
+
+# Activate conda environment (if using conda)
+# conda activate your_env_name
+
+# Set environment variables
+export CUDA_VISIBLE_DEVICES=0
+export PYTHONPATH="${PYTHONPATH}:${PBS_O_WORKDIR}"
+
+# Change to working directory
+cd $PBS_O_WORKDIR
+
+# Print job information
+echo "Job ID: $PBS_JOBID"
+echo "Node: $PBS_NODEFILE"
+echo "GPU: $CUDA_VISIBLE_DEVICES"
+echo "Working directory: $PBS_O_WORKDIR"
+
+# Run the test
+python hpc_single_gpu_test.py \
+    --d_model 256 \
+    --num_layers 4 \
+    --batch_size 8 \
+    --seq_length 512 \
+    --num_runs 30 \
+    --test_moe \
+    --num_experts 4 \
+    --top_k 2 \
+    --ttt_chunk_size 512 \
+    --ttt_update_frequency 128 \
+    --energy_aware_lr 1e-4 \
+    --muon_enabled \
+    --output_dir "results/hpc_test_${PBS_JOBID}"
+
+echo "Job completed successfully!" 
