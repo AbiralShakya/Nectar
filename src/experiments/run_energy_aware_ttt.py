@@ -21,9 +21,11 @@ import torch.nn.functional as F
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
+import csv
+import os
 
 # Import our custom modules
-from src.moe_models import MoEConfig, MoETransformerBlock
+from src.moe_models import MoEConfig, MoETransformerBlock, CapacityBasedRouter
 from src.routers import EnergyAwareTTTRouter, RoutingStrategy
 from src.kernelcostmodel import KernelCostModel
 from src.monitor import GpuSystemMonitor
@@ -336,12 +338,28 @@ class EnergyAwareTTTExperiment:
 
 
 def main():
+    # This script runs with synthetic data: all inputs (gate_logits, labels, etc.) are randomly generated tensors.
+    # This is for demonstration and testing only; replace with real data for real experiments.
     import torch
     import time
     from src.moe_models import MoEConfig
     from src.routers import EnergyAwareTTTRouter
+    from src.moe_models import CapacityBasedRouter
     from src.kernelcostmodel import KernelCostModel
     from src.monitor import GpuSystemMonitor
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Energy-aware router vs baseline experiment")
+    parser.add_argument('--results_dir', type=str, default=None, help='Directory to save results CSV (default: auto or current directory)')
+    args = parser.parse_args()
+
+    # Determine results directory
+    results_dir = args.results_dir
+    if results_dir is None:
+        # Try to auto-detect from environment or use current directory
+        results_dir = os.environ.get('RESULTS_DIR', os.getcwd())
+    os.makedirs(results_dir, exist_ok=True)
+    csv_file = os.path.join(results_dir, 'energy_comparison_results.csv')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Config matches the test
@@ -370,6 +388,9 @@ def main():
         energy_aware_lr=1e-4,
         muon_enabled=True
     ).to(device)
+    baseline_router = CapacityBasedRouter(
+        config=moe_config
+    ).to(device)
 
     batch_size = 32
     seq_length = 64
@@ -377,27 +398,77 @@ def main():
     num_batches = 10
     d_model = moe_config.d_model
     num_experts = moe_config.num_experts
+    num_classes = num_experts  # for synthetic accuracy
 
-    print("Running EnergyAwareTTTRouter experiment with synthetic data...")
-    for epoch in range(num_epochs):
-        for batch_idx in range(num_batches):
-            gate_logits = torch.randn(batch_size, seq_length, num_experts).to(device)
-            num_tokens = batch_size * seq_length
-            context = {
-                'gradients': [torch.randn(batch_size, d_model).to(device)],
-                'activations': [torch.randn(batch_size, d_model).to(device)],
-                'loss': torch.tensor(2.0).to(device)
-            }
-            start = time.time()
-            expert_indices, routing_weights, metadata = router(
-                gate_logits, num_tokens, context
-            )
-            elapsed = (time.time() - start) * 1000
-            observed_metrics = gpu_monitor.get_current_stats()
-            observed_metrics['inference_latency_ms'] = elapsed
-            loss_components = router.update_energy_aware_loss(observed_metrics)
-            print(f"Epoch {epoch+1} Batch {batch_idx+1} | Loss: {loss_components['total_loss']:.4f} | TTT updates: {metadata['ttt_update_count']}")
-    print("Experiment complete.")
+    # Prepare CSV file with human-readable headers
+    with open(csv_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        # Write a comment header for human readers
+        f.write('# Energy-aware MoE vs Baseline experiment results\n')
+        f.write('# Columns: Epoch, Batch, Router Type, Loss, Power Loss (W), Temp Loss (C), Latency Penalty (ms), Memory Penalty, Throughput Bonus, TTT Update Count, Accuracy\n')
+        writer.writerow([
+            'Epoch', 'Batch', 'Router Type', 'Loss', 'Power Loss (W)', 'Temp Loss (C)', 'Latency Penalty (ms)',
+            'Memory Penalty', 'Throughput Bonus', 'TTT Update Count', 'Accuracy'
+        ])
+
+        print("Running EnergyAwareTTTRouter and Baseline CapacityBasedRouter experiment with synthetic data...")
+        for epoch in range(num_epochs):
+            for batch_idx in range(num_batches):
+                gate_logits = torch.randn(batch_size, seq_length, num_experts).to(device)
+                num_tokens = batch_size * seq_length
+                context = {
+                    'gradients': [torch.randn(batch_size, d_model).to(device)],
+                    'activations': [torch.randn(batch_size, d_model).to(device)],
+                    'loss': torch.tensor(2.0).to(device)
+                }
+                # Simulate true labels for accuracy (random for synthetic)
+                true_labels = torch.randint(0, num_classes, (batch_size, seq_length)).to(device)
+
+                # Energy-aware router
+                start = time.time()
+                expert_indices, routing_weights, metadata = router(
+                    gate_logits, num_tokens, context
+                )
+                elapsed = (time.time() - start) * 1000
+                observed_metrics = gpu_monitor.get_current_stats()
+                observed_metrics['inference_latency_ms'] = elapsed
+                loss_components = router.update_energy_aware_loss(observed_metrics)
+                # Simulate accuracy: top-1 over expert_indices vs. true_labels
+                pred = expert_indices[..., 0]  # [batch, seq]
+                acc = (pred == true_labels).float().mean().item()
+                print(f"[EnergyAware] Epoch {epoch+1} Batch {batch_idx+1} | Loss: {loss_components['total_loss']:.4f} | Power: {loss_components['power_loss']:.4f} | Temp: {loss_components['temp_loss']:.4f} | Latency: {loss_components['latency_penalty']:.4f} | TTT updates: {metadata['ttt_update_count']} | Acc: {acc:.3f}")
+                writer.writerow([
+                    epoch+1, batch_idx+1, 'Energy-Aware',
+                    f"{loss_components['total_loss']:.4f}",
+                    f"{loss_components['power_loss']:.4f}",
+                    f"{loss_components['temp_loss']:.4f}",
+                    f"{loss_components['latency_penalty']:.2f}",
+                    f"{loss_components['memory_penalty']:.4f}",
+                    f"{loss_components['throughput_bonus']:.4f}",
+                    metadata['ttt_update_count'],
+                    f"{acc:.3f}"
+                ])
+
+                # CapacityBasedRouter expects token embeddings [N_tokens, d_model],
+                # not logits. We'll use a dummy embedding here for demonstration.
+                N = batch_size * seq_length
+                dummy_embeddings = torch.randn(N, d_model, device=device)
+                # it actually returns (indices, weights, [optional metadata])
+                base_out = baseline_router(dummy_embeddings)
+                base_indices, base_weights = base_out[0], base_out[1]
+                base_indices = base_indices.view(batch_size, seq_length, -1)
+                # define a synthetic loss for the baseline
+                base_loss = torch.randn(1).item() + 1.0
+                base_pred = base_indices[..., 0]
+                base_acc = (base_pred == true_labels).float().mean().item()
+                print(f"[Baseline]   Epoch {epoch+1} Batch {batch_idx+1} | Loss: {base_loss:.4f} | Acc: {base_acc:.3f}")
+                writer.writerow([
+                    epoch+1, batch_idx+1, 'Baseline',
+                    f"{base_loss:.4f}",
+                    'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A',
+                    f"{base_acc:.3f}"
+                ])
+    print(f"Experiment complete. Results saved to {csv_file}\n")
 
 
 if __name__ == "__main__":
