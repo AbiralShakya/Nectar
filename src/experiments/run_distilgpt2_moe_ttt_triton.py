@@ -168,8 +168,27 @@ def run_experiment(router_type, model, dataloader, device, results_dir,
                 top_k = getattr(model.transformer.transformer.h[0].ffn.router, 'top_k', 2)
                 per_expert_cost = per_token_cost * top_k
 
+                # Get expert usage from the last forward pass
+                expert_usage = None
+                for layer in model.transformer.transformer.h:
+                    router = getattr(layer.ffn, 'router', None)
+                    if router and hasattr(router, 'forward'):
+                        # Get the last routing metadata
+                        with torch.no_grad():
+                            base_out = model.transformer.transformer(input_ids=input_ids)
+                            hidden = base_out.last_hidden_state
+                            flat = hidden.view(-1, hidden.size(-1))
+                            _, _, metadata = router(flat)
+                            if 'expert_usage' in metadata:
+                                expert_usage = metadata['expert_usage']
+                                break
+
                 # provide normalized estimate to router
-                feedback = {'hardware_stats': hw_stats, 'estimated_energy': per_expert_cost}
+                feedback = {
+                    'hardware_stats': hw_stats, 
+                    'estimated_energy': per_expert_cost,
+                    'expert_usage': expert_usage
+                }
                 for layer in model.transformer.transformer.h:
                     router = getattr(layer.ffn, 'router', None)
                     if router and hasattr(router, 'ttt_update'):
