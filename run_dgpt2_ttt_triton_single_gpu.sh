@@ -37,10 +37,52 @@ python -c "import triton; print(f'Triton version: {triton.__version__}')" || {
     pip install triton-nightly
 }
 
-# Test multiple lambda_energy values to find optimal energy-accuracy trade-off
-echo "Testing different energy penalty values..."
+# Test granular lambda_energy values to find optimal energy-accuracy trade-off
+echo "Testing granular energy penalty values..."
 
-# Test 1: Higher energy penalty
+# Test 1: Very low penalty (baseline comparison)
+echo "=== Testing lambda_energy=0.001 ==="
+python src/experiments/run_distilgpt2_moe_ttt_triton.py \
+    --lambda_energy 0.001 \
+    --num_experts 16 \
+    --moe_top_k 2 \
+    --batch_size 8 \
+    --seq_length 64 \
+    --ttt_every 10 \
+    --num_batches 50 \
+    --num_epochs 2 \
+    --benchmark \
+| tee "$RESULTS_DIR/triton_moe_lambda_0.001.log"
+
+# Test 2: Low penalty
+echo "=== Testing lambda_energy=0.01 ==="
+python src/experiments/run_distilgpt2_moe_ttt_triton.py \
+    --lambda_energy 0.01 \
+    --num_experts 16 \
+    --moe_top_k 2 \
+    --batch_size 8 \
+    --seq_length 64 \
+    --ttt_every 10 \
+    --num_batches 50 \
+    --num_epochs 2 \
+    --benchmark \
+| tee "$RESULTS_DIR/triton_moe_lambda_0.01.log"
+
+# Test 3: Medium penalty
+echo "=== Testing lambda_energy=0.05 ==="
+python src/experiments/run_distilgpt2_moe_ttt_triton.py \
+    --lambda_energy 0.05 \
+    --num_experts 16 \
+    --moe_top_k 2 \
+    --batch_size 8 \
+    --seq_length 64 \
+    --ttt_every 10 \
+    --num_batches 50 \
+    --num_epochs 2 \
+    --benchmark \
+| tee "$RESULTS_DIR/triton_moe_lambda_0.05.log"
+
+# Test 4: Higher penalty
 echo "=== Testing lambda_energy=0.1 ==="
 python src/experiments/run_distilgpt2_moe_ttt_triton.py \
     --lambda_energy 0.1 \
@@ -54,10 +96,10 @@ python src/experiments/run_distilgpt2_moe_ttt_triton.py \
     --benchmark \
 | tee "$RESULTS_DIR/triton_moe_lambda_0.1.log"
 
-# Test 2: Very high energy penalty
-echo "=== Testing lambda_energy=1.0 ==="
+# Test 5: Very high penalty (for comparison)
+echo "=== Testing lambda_energy=0.5 ==="
 python src/experiments/run_distilgpt2_moe_ttt_triton.py \
-    --lambda_energy 1.0 \
+    --lambda_energy 0.5 \
     --num_experts 16 \
     --moe_top_k 2 \
     --batch_size 8 \
@@ -66,22 +108,8 @@ python src/experiments/run_distilgpt2_moe_ttt_triton.py \
     --num_batches 50 \
     --num_epochs 2 \
     --benchmark \
-| tee "$RESULTS_DIR/triton_moe_lambda_1.0.log"
-
-# Test 3: Original value for comparison
-echo "=== Testing lambda_energy=0.01 (original) ==="
-python src/experiments/run_distilgpt2_moe_ttt_triton.py \
-    --lambda_energy 0.01 \
-    --num_experts 16 \
-    --moe_top_k 2 \
-    --batch_size 8 \
-    --seq_length 64 \
-    --ttt_every 10 \
-    --num_batches 50 \
-    --num_epochs 2 \
-    --benchmark \
-| tee "$RESULTS_DIR/triton_moe_lambda_0.01.log"
+| tee "$RESULTS_DIR/triton_moe_lambda_0.5.log"
 
 echo "Job completed successfully!"
 echo "Check results in: $RESULTS_DIR"
-echo "Compare energy savings across different lambda_energy values" 
+echo "Compare energy savings vs accuracy loss across different lambda_energy values"

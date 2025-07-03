@@ -57,6 +57,10 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
         # Track per-expert energy costs (initialize with uniform distribution)
         self.expert_energy_costs = torch.ones(num_experts) * 1.0  # Normalized costs
         self.expert_usage_count = torch.zeros(num_experts)  # Track usage for adaptive costs
+        # Add adaptive penalty strategy
+        self.penalty_strategy = 'load_balance'  # 'uniform' or 'load_balance'
+        self.min_expert_penalty = 0.1  # Minimum penalty factor
+        self.max_expert_penalty = 2.0  # Maximum penalty factor
 
     def _ensure_device_consistency(self, device):
         """Ensure all internal tensors are on the same device."""
@@ -64,6 +68,28 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
             self.expert_energy_costs = self.expert_energy_costs.to(device)
         if self.expert_usage_count.device != device:
             self.expert_usage_count = self.expert_usage_count.to(device)
+
+    def _compute_adaptive_penalties(self, base_penalty):
+        """Compute adaptive penalties based on expert usage patterns."""
+        if self.penalty_strategy == 'uniform':
+            # Uniform penalty for all experts
+            return torch.ones(self.num_experts, device=self.expert_energy_costs.device) * base_penalty
+        elif self.penalty_strategy == 'load_balance':
+            # Load balancing: penalize overused experts more
+            usage_ratio = self.expert_usage_count / (self.expert_usage_count.sum() + 1e-8)
+            
+            # Normalize usage ratio to [0, 1]
+            if usage_ratio.max() > 0:
+                normalized_usage = usage_ratio / usage_ratio.max()
+            else:
+                normalized_usage = torch.zeros_like(usage_ratio)
+            
+            # Create penalty factors: higher usage = higher penalty
+            penalty_factors = self.min_expert_penalty + (self.max_expert_penalty - self.min_expert_penalty) * normalized_usage
+            
+            return base_penalty * penalty_factors
+        else:
+            return torch.ones(self.num_experts, device=self.expert_energy_costs.device) * base_penalty
 
     def ttt_update(self, feedback: Dict[str, Any]):
         # Store the most recent estimated energy (scalar or per-expert)
@@ -81,11 +107,6 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
                 
                 self.expert_usage_count += usage
                 
-                # Simple heuristic: more used experts might be more energy-intensive
-                # In practice, this would come from actual hardware profiling
-                usage_ratio = self.expert_usage_count / (self.expert_usage_count.sum() + 1e-8)
-                self.expert_energy_costs = 0.5 + 0.5 * usage_ratio  # Range [0.5, 1.0]
-                
         self.ttt_update_count += 1
 
     def forward(self, x: torch.Tensor, ttt_context: Optional[Dict[str, Any]] = None) -> Tuple[torch.Tensor, torch.Tensor, Dict]:
@@ -99,18 +120,17 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
             # Scale the energy penalty to make it meaningful
             base_penalty = self.lambda_energy * self.energy_scale * float(self.last_estimated_energy)
             
-            # Apply per-expert energy costs (move to device if needed)
-            if x.device != self.expert_energy_costs.device:
-                self.expert_energy_costs = self.expert_energy_costs.to(x.device)
-            
-            # Penalize each expert based on its energy cost
-            expert_penalties = base_penalty * self.expert_energy_costs  # [num_experts]
+            # Apply adaptive penalties based on usage patterns
+            expert_penalties = self._compute_adaptive_penalties(base_penalty)  # [num_experts]
             logits = logits - expert_penalties.unsqueeze(0)  # Broadcast to [N, num_experts]
             
             # Debug: print penalty magnitude
             if self.ttt_update_count % 10 == 0:
+                usage_ratio = self.expert_usage_count / (self.expert_usage_count.sum() + 1e-8)
                 print(f"[Energy Penalty] lambda={self.lambda_energy}, energy={self.last_estimated_energy:.6f}, "
-                      f"base_penalty={base_penalty:.6f}, expert_costs={self.expert_energy_costs[:3].tolist()}, "
+                      f"base_penalty={base_penalty:.6f}, strategy={self.penalty_strategy}, "
+                      f"penalty_range=[{expert_penalties.min():.6f}, {expert_penalties.max():.6f}], "
+                      f"usage_range=[{usage_ratio.min():.3f}, {usage_ratio.max():.3f}], "
                       f"logits_range=[{logits.min():.3f}, {logits.max():.3f}]")
         
         probs = torch.softmax(logits, dim=-1)
@@ -128,6 +148,7 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
             'ttt_update_count': self.ttt_update_count,
             'energy_penalty_applied': self.last_estimated_energy > 0,
             'expert_usage': expert_usage,
-            'expert_energy_costs': self.expert_energy_costs.cpu().tolist()
+            'expert_energy_costs': self.expert_energy_costs.cpu().tolist(),
+            'penalty_strategy': self.penalty_strategy
         }
-        return top_k_indices, top_k_probs, router_metadata 
+        return top_k_indices, top_k_probs, router_metadata
