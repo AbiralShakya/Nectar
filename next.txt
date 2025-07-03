@@ -146,3 +146,15 @@ logits = self.gate(x)
 logits = logits - penalty   # penalty is small, on the order of 0.001–0.01
 With that fix plus incremental λ tuning, you should start to see both routing diversity and measured power drop under the energy-aware policy. Let me know how it behaves once you renormalize the cost and dial in λ!
 
+
+currently: 
+    in mymoeblock 
+        compute gating sccores
+            gate_logits = gate(x)
+            top k selection topk_probs, topk_idx = probs.topk(k)
+            dispatch: split flattened token matrix x into k expert specific shards
+            per expert FFN y_i = expert_i(shard_i)
+            combine: scatter-add y_i back into output tensor
+
+        the dispatch, per expert FFN, and combine are biggest memory traffic and kernel launch overhead killers
+     
