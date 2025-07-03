@@ -343,8 +343,7 @@ def main():
     import os
     import argparse
     from transformers import AutoTokenizer, AutoModelForCausalLM
-    from datasets import load_dataset
-    from torch.utils.data import DataLoader
+    from torch.utils.data import DataLoader, TensorDataset
     import torch.nn as nn
     from torch.cuda.amp import autocast, GradScaler
     from src.routers import EnergyAwareTTTRouter
@@ -371,34 +370,77 @@ def main():
     os.makedirs(results_dir, exist_ok=True)
     csv_file = os.path.join(results_dir, 'energy_comparison_results.csv')
 
-    # Model and tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
-    model = AutoModelForCausalLM.from_pretrained("distilgpt2").to(device)
+    # Load tokenizer and model from HF cache (offline)
+    print(f"Loading distilgpt2 from HF_HOME: {os.environ.get('HF_HOME', 'not set')}")
+    
+    tokenizer = AutoTokenizer.from_pretrained("distilgpt2", local_files_only=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained("distilgpt2", local_files_only=True).to(device)
     model.eval()
     vocab_size = tokenizer.vocab_size
+    print(f"Loaded distilgpt2 with vocab size: {vocab_size}")
 
     # Gate head to map logits to num_experts
     gate_head = nn.Linear(vocab_size, args.num_experts).to(device)
     gate_head.eval()
 
-    # DataLoader: WikiText-2, real text
-    ds = load_dataset("wikitext", "wikitext-2-raw-v1", split="train[:1%]")
-    seq_length = args.seq_length
-    batch_size = args.batch_size
-    ds = ds.filter(lambda x: len(x["text"].split()) > 5)
-    def tokenize_batch(batch):
-        toks = tokenizer(batch["text"], return_tensors="pt",
-                         padding="max_length", truncation=True,
-                         max_length=seq_length)
-        return {"input_ids": toks.input_ids, "labels": toks.input_ids}
-    ds = ds.map(tokenize_batch, batched=True, remove_columns=["text"])
-    dataloader = DataLoader(ds, batch_size=batch_size)
+    # Build realistic dataset with real sentences
+    texts = [
+        "The quick brown fox jumps over the lazy dog.",
+        "Princeton University operates the Della cluster.",
+        "Energy-aware routing can save watts on large models.",
+        "Machine learning models require significant computational resources.",
+        "The transformer architecture revolutionized natural language processing.",
+        "GPU acceleration is essential for training large neural networks.",
+        "Mixture of experts can improve model efficiency and performance.",
+        "Hardware-aware optimization is crucial for real-world deployment.",
+        "Test-time training adapts models to new data distributions.",
+        "Dynamic routing enables flexible computation allocation.",
+        "Power consumption is a key constraint in edge computing.",
+        "Thermal management affects GPU performance and reliability.",
+        "Memory bandwidth limits the speed of neural network inference.",
+        "Quantization reduces model size and improves efficiency.",
+        "Attention mechanisms enable models to focus on relevant information.",
+        "Gradient-based optimization drives model learning and adaptation."
+    ]
+    
+    # Repeat texts to get enough data
+    texts = texts * 10  # 160 total sentences
+    
+    # Tokenize the texts
+    enc = tokenizer(texts, padding="max_length", truncation=True,
+                    max_length=args.seq_length, return_tensors="pt")
+    
+    # For next-token prediction, labels = input_ids (no shift needed for this demo)
+    input_ids = enc.input_ids
+    labels = input_ids.clone()
+    
+    # Create dataset and dataloader
+    dataset = TensorDataset(input_ids, labels)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
     # Routers and hardware monitor
     kernel_cost_model = KernelCostModel()
     gpu_monitor = GpuSystemMonitor()
+    
+    # Create minimal config for routers
+    router_config = MoEConfig(
+        d_model=768,  # distilgpt2 hidden size
+        num_experts=args.num_experts,
+        top_k=2,
+        dropout=0.1,
+        use_bias=False,
+        activation="swiglu",
+        expert_dropout=0.0,
+        use_grouped_gemm=True,
+        load_balance_weight=0.01,
+        router_z_loss_weight=0.001,
+        capacity_factor=1.25,
+        expert_type="simple"
+    )
+    
     router = EnergyAwareTTTRouter(
-        config=None,  # Not used in this minimal demo
+        config=router_config,
         kernel_cost_model=kernel_cost_model,
         gpu_system_monitor=gpu_monitor,
         ttt_chunk_size=32,
@@ -406,7 +448,7 @@ def main():
         energy_aware_lr=1e-4,
         muon_enabled=True
     ).to(device)
-    baseline_router = CapacityBasedRouter(config=None).to(device)
+    baseline_router = CapacityBasedRouter(config=router_config).to(device)
 
     scaler = GradScaler()
 
@@ -422,11 +464,11 @@ def main():
 
         print("Running EnergyAwareTTTRouter and Baseline CapacityBasedRouter experiment with real text data...")
         for epoch in range(args.num_epochs):
-            for batch_idx, batch in enumerate(dataloader):
+            for batch_idx, (input_ids, labels) in enumerate(dataloader):
                 if batch_idx >= args.num_batches:
                     break
-                input_ids = batch["input_ids"].to(device)
-                labels = batch["labels"].to(device)
+                input_ids = input_ids.to(device)
+                labels = labels.to(device)
                 with torch.no_grad():
                     with autocast():
                         outputs = model(input_ids)
@@ -434,7 +476,7 @@ def main():
                         gate_logits = gate_head(logits)  # [B, S, num_experts]
                 num_tokens = input_ids.numel()
                 context = {
-                    'gradients': [torch.randn(batch_size, logits.size(-1)).to(device)],  # placeholder
+                    'gradients': [torch.randn(args.batch_size, logits.size(-1)).to(device)],  # placeholder
                     'activations': [logits.detach()],
                     'loss': torch.tensor(2.0).to(device)
                 }
@@ -467,7 +509,7 @@ def main():
 
                 # Baseline router
                 N = input_ids.size(0) * input_ids.size(1)
-                dummy_embeddings = torch.randn(N, logits.size(-1), device=device)
+                dummy_embeddings = torch.randn(N, 768, device=device)
                 base_out = baseline_router(dummy_embeddings)
                 base_indices, base_weights = base_out[0], base_out[1]
                 base_indices = base_indices.view(input_ids.size(0), input_ids.size(1), -1)
