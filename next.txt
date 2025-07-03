@@ -92,3 +92,57 @@ If they track closely, your cost model is well-calibrated.
 Optionally use richer cost signals.
 Call get_cost_breakdown(...) to see memory vs. compute vs. thermal components.
 Or adapt batch size via get_thermal_safe_batch_size(...) when the GPU is hot.
+
+
+prev fix 
+Your energy penalty is mis‐scaled.
+Right now you do
+logits = logits - λ * last_estimated_energy
+but last_estimated_energy (from get_cost( op_type='moe_router', batch_size=seq_len )) is the total joules to route one batch of size 64. That might be on the order of 70 J, so with your default λ=0.001 you’re subtracting ~0.07 from every expert score. That may actually encourage picking more experts if the base logits are in the 0–1 range or if the model counterbalances it.
+
+What to do:
+
+Normalize your energy estimate down to a per‐token or per‐expert scale. E.g.
+# if cost['energy_joules'] is total for 64 tokens:
+per_token_energy = cost['energy_joules'] / seq_len
+per_expert_energy = per_token_energy * top_k  
+Then subtract λ * per_expert_energy instead of the raw batch cost.
+Tune your λ (energy‐tradeoff) hyperparameter.
+Start with a much smaller λ (e.g. 1e-5) so that energy only nibbles at the router’s decision. Then gradually increase until you see diversity—and measured power—drift downward.
+Use the right op_type & batch_size.
+Your call
+cost = cost_model.get_cost('moe_router', batch_size=seq_len, …)
+is a bit odd: the cost model expects batch_size to mean “how many sequences,” not “how many tokens.” You likely want
+
+cost = cost_model.get_cost(
+  op_type='moe_router',
+  batch_size=dataloader.batch_size,      # e.g. 8 sequences
+  current_temp=…,
+  memory_pressure=…
+)
+And then multiply by seq_len to account for the per‐token cost inside that op.
+Inspect the cost breakdown.
+Try
+breakdown = cost_model.get_cost_breakdown('moe_router', batch_size=…)
+print(breakdown)
+to see exactly how many joules / ms your model thinks each call is burning. That will help you calibrate your λ.
+Putting it all together
+Inside your TTT update, replace:
+
+estimated_energy = cost['energy_joules']
+with something like:
+
+# cost is for `batch_size` sequences; convert to per-expert, per-token
+batch_cost_j = cost['energy_joules']
+per_seq_cost_j   = batch_cost_j / actual_batch_size
+per_token_cost_j = per_seq_cost_j / seq_len
+per_expert_cost  = per_token_cost_j * top_k
+
+# now penalize by that
+penalty = λ * per_expert_cost
+And then in your router:
+
+logits = self.gate(x)
+logits = logits - penalty   # penalty is small, on the order of 0.001–0.01
+With that fix plus incremental λ tuning, you should start to see both routing diversity and measured power drop under the energy-aware policy. Let me know how it behaves once you renormalize the cost and dial in λ!
+

@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import os
+import datetime
+import argparse
 
 # import kernel cost model and GPU monitor
 from src.kernelcostmodel import KernelCostModel
@@ -142,8 +144,21 @@ def run_experiment(router_type, model, dataloader, device, results_dir,
     plt.close()
 
 def main():
-    # Save results in a subfolder of the current working directory
-    results_dir = os.path.join(os.getcwd(), 'results_distilgpt2_moe')
+    parser = argparse.ArgumentParser(description="Run DistilGPT2 MoE TTT experiment with energy-aware routing.")
+    parser.add_argument('--lambda_energy', type=float, default=0.001, help='Energy penalty weight for energy-aware router')
+    parser.add_argument('--num_experts', type=int, default=4, help='Number of experts in MoE')
+    parser.add_argument('--moe_top_k', type=int, default=2, help='Top-k experts to route to')
+    parser.add_argument('--num_batches', type=int, default=None, help='Number of batches to run (None = all)')
+    parser.add_argument('--num_epochs', type=int, default=1, help='Number of epochs to run')
+    parser.add_argument('--batch_size', type=int, default=8, help='Batch size for dataloader')
+    parser.add_argument('--seq_length', type=int, default=64, help='Sequence length for tokenization')
+    args = parser.parse_args()
+
+    # Determine job ID from environment or fallback to timestamp
+    jobid = os.environ.get('SLURM_JOB_ID') or os.environ.get('PBS_JOBID')
+    if not jobid:
+        jobid = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    results_dir = f'/scratch/gpfs/as0714/hardware_efficient_ml/results/hpc_kcm_test_{jobid}'
     os.makedirs(results_dir, exist_ok=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2", local_files_only=True)
@@ -155,25 +170,27 @@ def main():
         "Dynamic routing enables flexible computation allocation.",
         "Power consumption is a key constraint in edge computing."
     ] * 20
-    dataloader = get_dataloader(tokenizer, texts)
+    dataloader = get_dataloader(tokenizer, texts, seq_length=args.seq_length, batch_size=args.batch_size)
     config = AutoConfig.from_pretrained("distilgpt2", local_files_only=True)
+
+    print("[ARGS]", vars(args))
 
     # instantiate cost model and monitor
     kernel_cost_model = KernelCostModel()
     gpu_monitor = GpuSystemMonitor()
 
     # Baseline router
-    model_baseline = DistilGPT2WithMoE(config, moe_num_experts=4, moe_top_k=2)
+    model_baseline = DistilGPT2WithMoE(config, moe_num_experts=args.num_experts, moe_top_k=args.moe_top_k)
     for layer in model_baseline.transformer.transformer.h:
-        layer.ffn.set_router(SimpleTTTRouter(config.hidden_size, 4, 2))
+        layer.ffn.set_router(SimpleTTTRouter(config.hidden_size, args.num_experts, args.moe_top_k))
     run_experiment('baseline', model_baseline, dataloader, device,
                    results_dir, kernel_cost_model=None,
                    gpu_monitor=gpu_monitor)
 
     # Energy-aware router
-    model_energy = DistilGPT2WithMoE(config, moe_num_experts=4, moe_top_k=2)
+    model_energy = DistilGPT2WithMoE(config, moe_num_experts=args.num_experts, moe_top_k=args.moe_top_k)
     for layer in model_energy.transformer.transformer.h:
-        layer.ffn.set_router(EnergyAwareTTTRouter(config.hidden_size, 4, 2))
+        layer.ffn.set_router(EnergyAwareTTTRouter(config.hidden_size, args.num_experts, args.moe_top_k, lambda_energy=args.lambda_energy))
     run_experiment('energy_aware', model_energy, dataloader, device,
                    results_dir, kernel_cost_model=kernel_cost_model,
                    gpu_monitor=gpu_monitor)

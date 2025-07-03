@@ -45,7 +45,7 @@ mkdir -p "$RESULTS_DIR"
 #   --num_epochs     4 \
 # | tee "$RESULTS_DIR/test_energy_aware_ttt.log"
 
-python src/experiments/run_distilgpt2_moe_ttt.py
+python src/experiments/run_distilgpt2_moe_ttt.py --lambda_energy 0.01 --num_experts 16 --num_batches 200 --num_epochs 5
 
 echo "Job completed successfully!"
 echo "Check results in: $RESULTS_DIR"
