@@ -64,49 +64,35 @@ class KernelCostModel:
 
     def _initialize_realistic_data(self):
         """Initialize with realistic LLM/transformer operation costs"""
-        
         llm_ops = {
             # Attention operations - memory bandwidth bound
             "attention_qk": {"flops_per_token": 4096, "memory_intensity": 2.0, "parallelizable": True},
             "attention_av": {"flops_per_token": 4096, "memory_intensity": 1.5, "parallelizable": True},
             "attention_proj": {"flops_per_token": 16777216, "memory_intensity": 1.0, "parallelizable": True},
-            
-            # Feed-forward network - compute bound for large layers
             "ffn_gate": {"flops_per_token": 33554432, "memory_intensity": 0.8, "parallelizable": True},
             "ffn_up": {"flops_per_token": 33554432, "memory_intensity": 0.8, "parallelizable": True},
             "ffn_down": {"flops_per_token": 33554432, "memory_intensity": 0.8, "parallelizable": True},
-            
-            # Activation functions
             "silu_gelu": {"flops_per_token": 1024, "memory_intensity": 3.0, "parallelizable": True},
             "layer_norm": {"flops_per_token": 8192, "memory_intensity": 2.5, "parallelizable": False},
             "rmsnorm": {"flops_per_token": 4096, "memory_intensity": 2.0, "parallelizable": False},
-            
-            # Embedding operations
             "token_embed": {"flops_per_token": 4096, "memory_intensity": 4.0, "parallelizable": True},
             "pos_embed": {"flops_per_token": 2048, "memory_intensity": 3.0, "parallelizable": True},
-            
-            # Quantization operations (important for MoE routing)
             "quantize_w8a16": {"flops_per_token": 1024, "memory_intensity": 1.5, "parallelizable": True},
             "dequantize_w8a16": {"flops_per_token": 2048, "memory_intensity": 2.0, "parallelizable": True},
-            
-            # MoE specific operations
             "moe_router": {"flops_per_token": 2048, "memory_intensity": 1.0, "parallelizable": False},
             "expert_selection": {"flops_per_token": 512, "memory_intensity": 2.0, "parallelizable": False},
             "token_dispatch": {"flops_per_token": 256, "memory_intensity": 3.0, "parallelizable": False},
             "token_combine": {"flops_per_token": 512, "memory_intensity": 2.5, "parallelizable": False},
         }
-        
-        # Realistic batch sizes for LLM inference
         batch_sizes = [1, 2, 4, 8, 16, 32, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048]
-        
         all_costs = []
-        
         for op_name, op_props in llm_ops.items():
             for batch_size in batch_sizes:
                 costs = self._calculate_realistic_costs(op_name, op_props, batch_size)
-                costs.update({"op_type": op_name, "batch_size": batch_size})
+                # Ensure correct types
+                costs["op_type"] = str(op_name)
+                costs["batch_size"] = int(batch_size)
                 all_costs.append(costs)
-        
         self.data = pd.DataFrame(all_costs)
         self.data.set_index(["op_type", "batch_size"], inplace=True)
         self.unique_op_types = list(llm_ops.keys())
@@ -199,7 +185,10 @@ class KernelCostModel:
         """
         Enhanced cost lookup with thermal and memory pressure adjustments
         """
-        cache_key = (op_type, batch_size, current_temp, memory_pressure)
+        # Default current_temp to 0.0 if None
+        if current_temp is None:
+            current_temp = 0.0
+        cache_key = (op_type, batch_size)
         if cache_key in self.interpolation_cache:
             return self.interpolation_cache[cache_key]
 
@@ -211,8 +200,8 @@ class KernelCostModel:
         base_costs = self._get_base_cost(op_type, batch_size)
         
         # Apply thermal throttling effects
-        if current_temp is not None:
-            thermal_factor = self._calculate_thermal_factor(current_temp)
+        if current_temp is not None and isinstance(current_temp, (float, int)):
+            thermal_factor = self._calculate_thermal_factor(float(current_temp))
             base_costs["latency_ms"] *= thermal_factor
             base_costs["energy_joules"] *= thermal_factor
         
@@ -272,16 +261,33 @@ class KernelCostModel:
             temp_ratio = (current_temp - base_temp - 10) / (throttle_temp - base_temp - 10)
             return 1.0 + temp_ratio * 1.0  # Up to 100% slowdown
 
-    def get_cost_breakdown(self, op_type: str, batch_size: int) -> Dict[str, Any]:
-        """Detailed cost breakdown for analysis and debugging"""
-        base_costs = self.get_cost(op_type, batch_size)
-        
+    def get_cost_breakdown(
+        self,
+        op_type: str,
+        batch_size: int,
+        current_temp: float = None,
+        memory_pressure: float = 0.0
+    ) -> Dict[str, Any]:
+        """Detailed cost breakdown, with thermal and memory adjustments."""
+        # Default current_temp to 0.0 if None
+        if current_temp is None:
+            current_temp = 0.0
+        base_costs = self.get_cost(
+            op_type,
+            batch_size,
+            current_temp=current_temp,
+            memory_pressure=memory_pressure
+        )
+
         return {
             "base_costs": base_costs,
-            "bottleneck": "memory" if base_costs.get("memory_utilization", 0) > 
-                         base_costs.get("compute_utilization", 0) else "compute",
-            "efficiency_score": min(base_costs.get("compute_utilization", 0),
-                                  base_costs.get("memory_utilization", 0)),
+            "bottleneck": "memory"
+                if base_costs.get("memory_utilization", 0) > base_costs.get("compute_utilization", 0)
+                else "compute",
+            "efficiency_score": min(
+                base_costs.get("compute_utilization", 0),
+                base_costs.get("memory_utilization", 0)
+            ),
             "power_profile": {
                 "peak_power_w": base_costs["energy_joules"] / (base_costs["latency_ms"] / 1000),
                 "energy_efficiency_gflops_w": (batch_size * 1000) / base_costs["energy_joules"]
@@ -295,11 +301,13 @@ class KernelCostModel:
     def get_thermal_safe_batch_size(self, op_type: str, current_temp: float, 
                                    max_temp_increase: float = 5.0) -> int:
         """Recommend maximum batch size to stay within thermal limits"""
+        if op_type is None:
+            op_type = "moe_router"
+        if current_temp is None:
+            current_temp = 0.0
         available_batches = sorted([idx[1] for idx in self.data.index if idx[0] == op_type])
-        
         for batch_size in reversed(available_batches):  # Start from largest
             cost = self.get_cost(op_type, batch_size, current_temp)
             if cost["temp_impact"] <= max_temp_increase:
                 return batch_size
-        
         return available_batches[0] if available_batches else 1
