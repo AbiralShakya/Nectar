@@ -60,16 +60,26 @@ def run_experiment(router_type, model, dataloader, device, results_dir,
             # TTT update (for energy-aware router)
             if router_type == 'energy_aware' and batch_idx % ttt_update_every == 0 and kernel_cost_model:
                 # estimate energy via get_cost
+                actual_batch_size = input_ids.size(0)  # number of sequences in this batch
+                seq_len = input_ids.size(1)           # number of tokens per sequence
                 cost = kernel_cost_model.get_cost(
                     op_type='moe_router',
-                    batch_size=input_ids.size(1),
+                    batch_size=actual_batch_size,  # number of sequences
                     current_temp=hw_stats['temp'],
                     memory_pressure=stats.get('memory_utilization_percent', 0)/100.0 if gpu_monitor else 0.0
                 )
-                estimated_energy = cost['energy_joules']
+                # Print cost breakdown for inspection
+                if hasattr(kernel_cost_model, 'get_cost_breakdown'):
+                    breakdown = kernel_cost_model.get_cost_breakdown('moe_router', batch_size=actual_batch_size)
+                    print(f"[Cost Breakdown] {breakdown}")
+                batch_cost_j = cost['energy_joules']
+                per_seq_cost_j = batch_cost_j / actual_batch_size
+                per_token_cost_j = per_seq_cost_j / seq_len
+                top_k = getattr(model.transformer.transformer.h[0].ffn.router, 'top_k', 2)
+                per_expert_cost = per_token_cost_j * top_k
                 feedback = {
                     'hardware_stats': hw_stats,
-                    'estimated_energy': estimated_energy
+                    'estimated_energy': per_expert_cost
                 }
                 for layer in model.transformer.transformer.h:
                     if hasattr(layer.ffn, 'router') and hasattr(layer.ffn.router, 'ttt_update'):
@@ -132,7 +142,9 @@ def run_experiment(router_type, model, dataloader, device, results_dir,
     plt.close()
 
 def main():
-    os.makedirs('results_distilgpt2_moe', exist_ok=True)
+    # Save results in a subfolder of the current working directory
+    results_dir = os.path.join(os.getcwd(), 'results_distilgpt2_moe')
+    os.makedirs(results_dir, exist_ok=True)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2", local_files_only=True)
     tokenizer.pad_token = tokenizer.eos_token
@@ -155,7 +167,7 @@ def main():
     for layer in model_baseline.transformer.transformer.h:
         layer.ffn.set_router(SimpleTTTRouter(config.hidden_size, 4, 2))
     run_experiment('baseline', model_baseline, dataloader, device,
-                   'results_distilgpt2_moe', kernel_cost_model=None,
+                   results_dir, kernel_cost_model=None,
                    gpu_monitor=gpu_monitor)
 
     # Energy-aware router
@@ -163,10 +175,10 @@ def main():
     for layer in model_energy.transformer.transformer.h:
         layer.ffn.set_router(EnergyAwareTTTRouter(config.hidden_size, 4, 2))
     run_experiment('energy_aware', model_energy, dataloader, device,
-                   'results_distilgpt2_moe', kernel_cost_model=kernel_cost_model,
+                   results_dir, kernel_cost_model=kernel_cost_model,
                    gpu_monitor=gpu_monitor)
 
-    print("All experiments complete! Check results_distilgpt2_moe for CSVs and plots.")
+    print(f"All experiments complete! Check {results_dir} for CSVs and plots.")
 
 if __name__ == '__main__':
     main()

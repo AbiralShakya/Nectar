@@ -67,3 +67,28 @@ Step	What to Do
 2. Model Surgery	Subclass DistilGPT2, replace FFN with your MoE block in each transformer layer.
 3. TTT Integration	Ensure router supports TTT and hardware feedback, call update logic.
 4. Usage	Tokenize as usual, run model, collect/log metrics, perform TTT updates.
+
+
+07.03.2025
+11:30 am 
+Loss is the standard cross-entropy between your model’s logits and the input tokens. It reflects how well the MoE model is reconstructing the text (since you’re doing language-modeling where input = target).
+RoutingDiversity is the fraction of experts actually used in that batch (e.g. 0.5 means half your experts fired at least once).
+EstimatedPower is coming straight from your cost model’s get_cost("moe_router", batch_size=seq_len) call, i.e. the joules predicted per token for the routing operation.
+What to do next for real energy savings
+Right now, the energy-aware run just logs the joules, but doesn’t act on them. To actually reduce power you must:
+
+Wire the estimate into your router’s objective.
+In your EnergyAwareTTTRouter.ttt_update(feedback) (or inside its forward), use something like:
+# pseudo-code inside the router
+score_per_expert = base_score  - λ * feedback['estimated_energy']
+choose top-k experts by this penalized score
+A small λ (e.g. 0.001) gently nudges the router away from expensive expert calls. Larger λ makes it more “stingy.”
+Tune λ on a validation set.
+Start λ≈0.001 and increase until you see routing diversity drop.
+Watch that your loss curve doesn’t balloon.
+Compare real vs. estimated power.
+Overlay GpuSystemMonitor.history’s actual watts with your model’s EstimatedPower.
+If they track closely, your cost model is well-calibrated.
+Optionally use richer cost signals.
+Call get_cost_breakdown(...) to see memory vs. compute vs. thermal components.
+Or adapt batch size via get_thermal_safe_batch_size(...) when the GPU is hot.
