@@ -2,3 +2,68 @@ Fix accuracy calculation - compare routing decisions, not token predictions
 Add real hardware metrics - power, temperature, memory usage
 Run longer experiments - more epochs to see convergence
 Compare with real MoE training - use actual expert networks
+
+
+
+problem: all are going to one router. 
+Technique	Effect	Code Example/Note
+Load balancing loss	Penalizes uneven expert usage	std(tokens_per_expert)
+Entropy regularization	Encourages uniform routing	-entropy(tokens_per_expert)
+KL to uniform	Forces routing to be close to uniform	KL(router_probs || uniform)
+Softmax temperature	Spreads out routing probabilities	softmax(logits / T)
+
+
+
+1. What the Current MoE Model Does
+Your current MoE model (e.g., MoETransformerBlock and OptimizedMoELayer in your codebase) is a custom transformer block that includes a Mixture-of-Experts (MoE) layer. Here’s how it works:
+Architecture and Flow
+Input: Receives token embeddings (from tokenized text).
+LayerNorm: Applies layer normalization.
+MoE Layer:
+Router: Decides, for each token, which experts (small MLPs) should process it. The router can be a baseline (capacity-based) or your energy-aware TTT router.
+Experts: Each expert is a small feedforward network (e.g., SwiGLU MLP).
+Dispatch: Tokens are routed to one or more experts (top-k), processed, and their outputs are combined.
+Dropout/Residual: Applies dropout and adds a residual connection.
+Output: Returns the processed tensor and routing/auxiliary metrics.
+Key Features
+Router Swapping: You can swap in different routers (baseline, energy-aware, etc.) for research.
+TTT Integration: The energy-aware router can update its routing policy at test time, using hardware feedback (power, temp, etc.).
+Metrics: Tracks and logs routing diversity, power, temperature, and other metrics.
+Limitation
+This model is not a full LLM like GPT-2; it’s a research block for MoE/routing/TTT experiments.
+2. How to Add MoE and Routing to DistilGPT2 (or GPT-2) and Integrate TTT
+Here’s a step-by-step outline and code sketch for what you want:
+A. Outline: Adding MoE to DistilGPT2
+Subclass the HuggingFace DistilGPT2 model.
+Replace the feedforward (FFN/MLP) block in one or more transformer layers with your MoE block.
+Ensure your MoE block supports router swapping and TTT.
+Integrate your hardware-aware TTT router and feedback logic.
+Train or run inference as usual, but now with MoE and hardware-aware routing.
+B. Code Sketch: MoE Integration with DistilGPT2
+Step 1: Define Your MoE Block
+Suppose you have a class like this (simplified):
+Apply to run_energy_a...
+.
+Step 2: Subclass DistilGPT2 and Replace FFN with MoE
+Apply to run_energy_a...
+)
+Step 3: Integrate TTT and Hardware Feedback
+In your MyMoEBlock, ensure the router supports TTT and hardware feedback (as in your current energy-aware router).
+During inference, collect hardware stats and pass them to the router for adaptation.
+Step 4: Use the Model
+Apply to run_energy_a...
+)
+C. TTT Integration
+Your router (inside MyMoEBlock) should expose methods for TTT updates, just as in your current code.
+During inference, after each batch, call the TTT update logic with hardware feedback.
+D. What You Need to Implement
+A MyMoEBlock that matches the interface of the original FFN block (input/output shapes).
+A router that can be swapped and supports TTT/hardware feedback.
+A subclass of DistilGPT2Model (or GPT2Model) that replaces the FFN with your MoE block.
+(Optional) Utilities to log and plot metrics as in your current experiments.
+Summary Table
+Step	What to Do
+1. MoE Block	Implement a block with experts and a router (TTT/hardware-aware capable).
+2. Model Surgery	Subclass DistilGPT2, replace FFN with your MoE block in each transformer layer.
+3. TTT Integration	Ensure router supports TTT and hardware feedback, call update logic.
+4. Usage	Tokenize as usual, run model, collect/log metrics, perform TTT updates.
