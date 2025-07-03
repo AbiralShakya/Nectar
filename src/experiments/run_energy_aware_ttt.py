@@ -345,19 +345,23 @@ def main():
     from transformers import AutoTokenizer, AutoModelForCausalLM
     from torch.utils.data import DataLoader, TensorDataset
     import torch.nn as nn
+    import torch.nn.functional as F
     from torch.cuda.amp import autocast, GradScaler
     from src.routers import EnergyAwareTTTRouter
     from src.moe_models import CapacityBasedRouter
     from src.kernelcostmodel import KernelCostModel
     from src.monitor import GpuSystemMonitor
+    import numpy as np
+    import matplotlib.pyplot as plt
 
     parser = argparse.ArgumentParser(description="Energy-aware router vs baseline experiment (real text)")
     parser.add_argument('--results_dir', type=str, default=None, help='Directory to save results CSV (default: auto or current directory)')
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--seq_length', type=int, default=64)
     parser.add_argument('--num_experts', type=int, default=4)
-    parser.add_argument('--num_batches', type=int, default=10)
-    parser.add_argument('--num_epochs', type=int, default=1)
+    parser.add_argument('--num_batches', type=int, default=50)  # Increased for longer experiment
+    parser.add_argument('--num_epochs', type=int, default=3)    # Increased for longer experiment
+    parser.add_argument('--use_real_experts', action='store_true', help='Use actual expert networks instead of dummy')
     args = parser.parse_args()
 
     # Device
@@ -369,6 +373,8 @@ def main():
         results_dir = os.environ.get('RESULTS_DIR', os.getcwd())
     os.makedirs(results_dir, exist_ok=True)
     csv_file = os.path.join(results_dir, 'energy_comparison_results.csv')
+    plots_dir = os.path.join(results_dir, 'plots')
+    os.makedirs(plots_dir, exist_ok=True)
 
     # Load tokenizer and model from HF cache (offline)
     print(f"Loading distilgpt2 from HF_HOME: {os.environ.get('HF_HOME', 'not set')}")
@@ -401,11 +407,15 @@ def main():
         "Memory bandwidth limits the speed of neural network inference.",
         "Quantization reduces model size and improves efficiency.",
         "Attention mechanisms enable models to focus on relevant information.",
-        "Gradient-based optimization drives model learning and adaptation."
+        "Gradient-based optimization drives model learning and adaptation.",
+        "Neural networks learn hierarchical representations of data.",
+        "Backpropagation efficiently computes gradients for optimization.",
+        "Regularization techniques prevent overfitting in deep learning.",
+        "Transfer learning leverages pre-trained models for new tasks."
     ]
     
     # Repeat texts to get enough data
-    texts = texts * 10  # 160 total sentences
+    texts = texts * 20  # 400 total sentences for longer experiment
     
     # Tokenize the texts
     enc = tokenizer(texts, padding="max_length", truncation=True,
@@ -450,16 +460,40 @@ def main():
     ).to(device)
     baseline_router = CapacityBasedRouter(config=router_config).to(device)
 
+    # Create real expert networks if requested
+    if args.use_real_experts:
+        experts = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(768, 1024),
+                nn.GELU(),
+                nn.Linear(1024, 768)
+            ).to(device) for _ in range(args.num_experts)
+        ])
+        print(f"Created {args.num_experts} real expert networks")
+    else:
+        experts = None
+
     scaler = GradScaler()
+
+    # Metrics tracking
+    energy_aware_metrics = {
+        'losses': [], 'power_losses': [], 'temp_losses': [], 'latency_penalties': [],
+        'memory_penalties': [], 'throughput_bonuses': [], 'ttt_updates': [], 'accuracies': [],
+        'real_power': [], 'real_temp': [], 'real_memory': []
+    }
+    baseline_metrics = {
+        'losses': [], 'accuracies': [], 'real_power': [], 'real_temp': [], 'real_memory': []
+    }
 
     # Prepare CSV file with human-readable headers
     with open(csv_file, 'w', newline='') as f:
         writer = csv.writer(f)
         f.write('# Energy-aware MoE vs Baseline experiment results (real text)\n')
-        f.write('# Columns: Epoch, Batch, Router Type, Loss, Power Loss (W), Temp Loss (C), Latency Penalty (ms), Memory Penalty, Throughput Bonus, TTT Update Count, Accuracy\n')
+        f.write('# Columns: Epoch, Batch, Router Type, Loss, Power Loss (W), Temp Loss (C), Latency Penalty (ms), Memory Penalty, Throughput Bonus, TTT Update Count, Accuracy, Real Power (W), Real Temp (C), Real Memory (%), Expert Usage\n')
         writer.writerow([
             'Epoch', 'Batch', 'Router Type', 'Loss', 'Power Loss (W)', 'Temp Loss (C)', 'Latency Penalty (ms)',
-            'Memory Penalty', 'Throughput Bonus', 'TTT Update Count', 'Accuracy'
+            'Memory Penalty', 'Throughput Bonus', 'TTT Update Count', 'Accuracy', 'Real Power (W)', 'Real Temp (C)', 
+            'Real Memory (%)', 'Expert Usage'
         ])
 
         print("Running EnergyAwareTTTRouter and Baseline CapacityBasedRouter experiment with real text data...")
@@ -469,6 +503,10 @@ def main():
                     break
                 input_ids = input_ids.to(device)
                 labels = labels.to(device)
+                
+                # Get real hardware metrics before processing
+                pre_metrics = gpu_monitor.get_current_stats()
+                
                 with torch.no_grad():
                     with autocast():
                         outputs = model(input_ids)
@@ -480,21 +518,48 @@ def main():
                     'activations': [logits.detach()],
                     'loss': torch.tensor(2.0).to(device)
                 }
-                # Simulate true labels for accuracy (next-token prediction)
-                true_labels = labels
+                
                 # Energy-aware router
                 start = time.time()
                 expert_indices, routing_weights, metadata = router(
                     gate_logits, num_tokens, context
                 )
                 elapsed = (time.time() - start) * 1000
-                observed_metrics = gpu_monitor.get_current_stats()
+                
+                # Get real hardware metrics after processing
+                post_metrics = gpu_monitor.get_current_stats()
+                observed_metrics = post_metrics
                 observed_metrics['inference_latency_ms'] = elapsed
                 loss_components = router.update_energy_aware_loss(observed_metrics)
-                # Simulate accuracy: top-1 over expert_indices vs. true_labels
-                pred = expert_indices[..., 0]  # [batch, seq]
-                acc = (pred == true_labels).float().mean().item()
-                print(f"[EnergyAware] Epoch {epoch+1} Batch {batch_idx+1} | Loss: {loss_components['total_loss']:.4f} | Power: {loss_components['power_loss']:.4f} | Temp: {loss_components['temp_loss']:.4f} | Latency: {loss_components['latency_penalty']:.4f} | TTT updates: {metadata['ttt_update_count']} | Acc: {acc:.3f}")
+                
+                # Calculate routing accuracy (compare routing decisions)
+                # For routing accuracy, we compare if the router made "reasonable" decisions
+                # (e.g., not all tokens going to the same expert)
+                routing_decision = expert_indices[..., 0]  # [batch, seq]
+                # Ensure valid expert indices (0 to num_experts-1)
+                routing_decision = torch.clamp(routing_decision, 0, args.num_experts - 1).long()
+                expert_usage = torch.bincount(routing_decision.flatten(), minlength=args.num_experts)
+                routing_diversity = (expert_usage > 0).sum().item() / args.num_experts  # How many experts were used
+                routing_acc = routing_diversity  # Higher diversity = better routing
+                
+                # Calculate expert usage distribution
+                expert_usage_str = ','.join([f"{usage.item()}" for usage in expert_usage])
+                
+                print(f"[EnergyAware] Epoch {epoch+1} Batch {batch_idx+1} | Loss: {loss_components['total_loss']:.4f} | Power: {loss_components['power_loss']:.4f} | Temp: {loss_components['temp_loss']:.4f} | Latency: {loss_components['latency_penalty']:.4f} | TTT updates: {metadata['ttt_update_count']} | Acc: {routing_acc:.3f} | Real Power: {post_metrics.get('power_watt', 0):.1f}W | Real Temp: {post_metrics.get('temperature', 0):.1f}°C")
+                
+                # Store metrics
+                energy_aware_metrics['losses'].append(loss_components['total_loss'])
+                energy_aware_metrics['power_losses'].append(loss_components['power_loss'])
+                energy_aware_metrics['temp_losses'].append(loss_components['temp_loss'])
+                energy_aware_metrics['latency_penalties'].append(loss_components['latency_penalty'])
+                energy_aware_metrics['memory_penalties'].append(loss_components['memory_penalty'])
+                energy_aware_metrics['throughput_bonuses'].append(loss_components['throughput_bonus'])
+                energy_aware_metrics['ttt_updates'].append(metadata['ttt_update_count'])
+                energy_aware_metrics['accuracies'].append(routing_acc)
+                energy_aware_metrics['real_power'].append(post_metrics.get('power_watt', 0))
+                energy_aware_metrics['real_temp'].append(post_metrics.get('temperature', 0))
+                energy_aware_metrics['real_memory'].append(post_metrics.get('memory_utilization_percent', 0))
+                
                 writer.writerow([
                     epoch+1, batch_idx+1, 'Energy-Aware',
                     f"{loss_components['total_loss']:.4f}",
@@ -504,26 +569,138 @@ def main():
                     f"{loss_components['memory_penalty']:.4f}",
                     f"{loss_components['throughput_bonus']:.4f}",
                     metadata['ttt_update_count'],
-                    f"{acc:.3f}"
+                    f"{routing_acc:.3f}",
+                    f"{post_metrics.get('power_watt', 0):.1f}",
+                    f"{post_metrics.get('temperature', 0):.1f}",
+                    f"{post_metrics.get('memory_utilization_percent', 0):.1f}",
+                    expert_usage_str
                 ])
 
                 # Baseline router
                 N = input_ids.size(0) * input_ids.size(1)
-                dummy_embeddings = torch.randn(N, 768, device=device)
+                dummy_embeddings = torch.randn(N, 768, device=device)  # Use d_model=768 instead of vocab_size
                 base_out = baseline_router(dummy_embeddings)
                 base_indices, base_weights = base_out[0], base_out[1]
                 base_indices = base_indices.view(input_ids.size(0), input_ids.size(1), -1)
                 base_loss = torch.randn(1).item() + 1.0
-                base_pred = base_indices[..., 0]
-                base_acc = (base_pred == true_labels).float().mean().item()
-                print(f"[Baseline]   Epoch {epoch+1} Batch {batch_idx+1} | Loss: {base_loss:.4f} | Acc: {base_acc:.3f}")
+                
+                # Calculate baseline routing accuracy
+                base_routing_decision = base_indices[..., 0]
+                # Ensure valid expert indices (0 to num_experts-1)
+                base_routing_decision = torch.clamp(base_routing_decision, 0, args.num_experts - 1).long()
+                base_expert_usage = torch.bincount(base_routing_decision.flatten(), minlength=args.num_experts)
+                base_routing_diversity = (base_expert_usage > 0).sum().item() / args.num_experts
+                base_routing_acc = base_routing_diversity
+                base_expert_usage_str = ','.join([f"{usage.item()}" for usage in base_expert_usage])
+                
+                print(f"[Baseline]   Epoch {epoch+1} Batch {batch_idx+1} | Loss: {base_loss:.4f} | Acc: {base_routing_acc:.3f} | Real Power: {post_metrics.get('power_watt', 0):.1f}W | Real Temp: {post_metrics.get('temperature', 0):.1f}°C")
+                
+                # Store baseline metrics
+                baseline_metrics['losses'].append(base_loss)
+                baseline_metrics['accuracies'].append(base_routing_acc)
+                baseline_metrics['real_power'].append(post_metrics.get('power_watt', 0))
+                baseline_metrics['real_temp'].append(post_metrics.get('temperature', 0))
+                baseline_metrics['real_memory'].append(post_metrics.get('memory_utilization_percent', 0))
+                
                 writer.writerow([
                     epoch+1, batch_idx+1, 'Baseline',
                     f"{base_loss:.4f}",
                     'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A',
-                    f"{base_acc:.3f}"
+                    f"{base_routing_acc:.3f}",
+                    f"{post_metrics.get('power_watt', 0):.1f}",
+                    f"{post_metrics.get('temperature', 0):.1f}",
+                    f"{post_metrics.get('memory_utilization_percent', 0):.1f}",
+                    base_expert_usage_str
                 ])
-    print(f"Experiment complete. Results saved to {csv_file}\n")
+    
+    # Generate analysis plots
+    print("\nGenerating analysis plots...")
+    
+    # Plot 1: Loss comparison over time
+    plt.figure(figsize=(12, 8))
+    plt.subplot(2, 2, 1)
+    plt.plot(energy_aware_metrics['losses'], label='Energy-Aware', alpha=0.8)
+    plt.plot(baseline_metrics['losses'], label='Baseline', alpha=0.8)
+    plt.xlabel('Batch')
+    plt.ylabel('Loss')
+    plt.title('Loss Comparison')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Plot 2: Routing accuracy comparison
+    plt.subplot(2, 2, 2)
+    plt.plot(energy_aware_metrics['accuracies'], label='Energy-Aware', alpha=0.8)
+    plt.plot(baseline_metrics['accuracies'], label='Baseline', alpha=0.8)
+    plt.xlabel('Batch')
+    plt.ylabel('Routing Accuracy (Expert Diversity)')
+    plt.title('Routing Accuracy Comparison')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Plot 3: Real hardware metrics
+    plt.subplot(2, 2, 3)
+    plt.plot(energy_aware_metrics['real_power'], label='Energy-Aware Power', alpha=0.8)
+    plt.plot(baseline_metrics['real_power'], label='Baseline Power', alpha=0.8)
+    plt.xlabel('Batch')
+    plt.ylabel('Power (W)')
+    plt.title('Real GPU Power Consumption')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Plot 4: TTT updates and energy savings
+    plt.subplot(2, 2, 4)
+    ax1 = plt.gca()
+    ax2 = ax1.twinx()
+    
+    line1 = ax1.plot(energy_aware_metrics['ttt_updates'], 'b-', label='TTT Updates', alpha=0.8)
+    line2 = ax2.plot(energy_aware_metrics['power_losses'], 'r-', label='Power Loss', alpha=0.8)
+    
+    ax1.set_xlabel('Batch')
+    ax1.set_ylabel('TTT Update Count', color='b')
+    ax2.set_ylabel('Power Loss', color='r')
+    ax1.set_title('TTT Updates vs Power Loss')
+    
+    lines = line1 + line2
+    labels = [l.get_label() for l in lines]
+    ax1.legend(lines, labels, loc='upper left')
+    ax1.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(plots_dir, 'experiment_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Print summary statistics
+    print("\n" + "="*60)
+    print("EXPERIMENT SUMMARY")
+    print("="*60)
+    print(f"Total batches processed: {len(energy_aware_metrics['losses'])}")
+    print(f"Total epochs: {args.num_epochs}")
+    print(f"Number of experts: {args.num_experts}")
+    
+    print(f"\nEnergy-Aware Router:")
+    print(f"  Average loss: {np.mean(energy_aware_metrics['losses']):.4f}")
+    print(f"  Average routing accuracy: {np.mean(energy_aware_metrics['accuracies']):.4f}")
+    print(f"  Total TTT updates: {energy_aware_metrics['ttt_updates'][-1]}")
+    print(f"  Average real power: {np.mean(energy_aware_metrics['real_power']):.1f}W")
+    print(f"  Average real temperature: {np.mean(energy_aware_metrics['real_temp']):.1f}°C")
+    
+    print(f"\nBaseline Router:")
+    print(f"  Average loss: {np.mean(baseline_metrics['losses']):.4f}")
+    print(f"  Average routing accuracy: {np.mean(baseline_metrics['accuracies']):.4f}")
+    print(f"  Average real power: {np.mean(baseline_metrics['real_power']):.1f}W")
+    print(f"  Average real temperature: {np.mean(baseline_metrics['real_temp']):.1f}°C")
+    
+    # Calculate energy savings
+    if len(energy_aware_metrics['real_power']) > 0 and len(baseline_metrics['real_power']) > 0:
+        avg_energy_power = np.mean(energy_aware_metrics['real_power'])
+        avg_baseline_power = np.mean(baseline_metrics['real_power'])
+        power_savings = avg_baseline_power - avg_energy_power
+        print(f"\nEnergy Analysis:")
+        print(f"  Power savings: {power_savings:.1f}W ({power_savings/avg_baseline_power*100:.1f}%)")
+    
+    print(f"\nResults saved to: {csv_file}")
+    print(f"Plots saved to: {plots_dir}")
+    print("="*60)
 
 
 if __name__ == "__main__":

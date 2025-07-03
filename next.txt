@@ -1,0 +1,4 @@
+Fix accuracy calculation - compare routing decisions, not token predictions
+Add real hardware metrics - power, temperature, memory usage
+Run longer experiments - more epochs to see convergence
+Compare with real MoE training - use actual expert networks
