@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 from datetime import datetime
 import time
-from typing import Dict, Tuple, Any, List
+from typing import Dict, Tuple, Any, List, Optional
+from dataclasses import dataclass
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +15,7 @@ import seaborn as sns
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from src.moe_models import MoEConfig, MoETransformerBlock, OptimizedMoELayer, SwiGLUExpert, OptimizedQuantizedExpert, DistributedMoELayer, NetworkTopologyOptimizer
-from routers import RoutingStrategy, GpuSystemMonitor, AdaptiveRouter
+# from routers import RoutingStrategy, GpuSystemMonitor, AdaptiveRouter  # Commented out - not needed for this test
 from src.kernelcostmodel import KernelCostModel
 from data_utils import DataLoaderManager
 from metrics_logger import MetricsLogger
