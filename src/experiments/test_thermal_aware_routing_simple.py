@@ -359,14 +359,14 @@ class ThermalAwareRoutingTester:
             'results': [
                 {
                     'thermal_scenario': r.thermal_scenario,
-                    'memory_pressure': r.memory_pressure,
-                    'avg_temperature': r.avg_temperature,
-                    'thermal_imbalance_score': r.thermal_imbalance_score,
-                    'expert_migration_count': r.expert_migration_count,
-                    'avg_energy_joules': r.avg_energy_joules,
-                    'avg_latency_ms': r.avg_latency_ms,
-                    'routing_accuracy': r.routing_accuracy,
-                    'thermal_penalty_applied': r.thermal_penalty_applied
+                    'memory_pressure': float(r.memory_pressure),
+                    'avg_temperature': float(r.avg_temperature),
+                    'thermal_imbalance_score': float(r.thermal_imbalance_score),
+                    'expert_migration_count': int(r.expert_migration_count),
+                    'avg_energy_joules': float(r.avg_energy_joules),
+                    'avg_latency_ms': float(r.avg_latency_ms),
+                    'routing_accuracy': float(r.routing_accuracy),
+                    'thermal_penalty_applied': bool(r.thermal_penalty_applied)
                 }
                 for r in results
             ],

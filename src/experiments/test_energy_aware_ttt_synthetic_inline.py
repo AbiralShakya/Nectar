@@ -369,16 +369,16 @@ class EnergyAwareTTTSyntheticTester:
                 'error_margin': self.args.error_margin
             },
             'results': {
-                'avg_energy_joules': result.avg_energy_joules,
-                'avg_latency_ms': result.avg_latency_ms,
-                'avg_power_watt': result.avg_power_watt,
-                'avg_accuracy': result.avg_accuracy,
-                'thermal_imbalance_score': result.thermal_imbalance_score,
-                'routing_entropy': result.routing_entropy,
-                'expert_usage_distribution': result.expert_usage_distribution,
-                'ttt_update_count': result.ttt_update_count,
-                'energy_savings_percent': result.energy_savings_percent,
-                'accuracy_loss_percent': result.accuracy_loss_percent
+                'avg_energy_joules': float(result.avg_energy_joules),
+                'avg_latency_ms': float(result.avg_latency_ms),
+                'avg_power_watt': float(result.avg_power_watt),
+                'avg_accuracy': float(result.avg_accuracy),
+                'thermal_imbalance_score': float(result.thermal_imbalance_score),
+                'routing_entropy': float(result.routing_entropy),
+                'expert_usage_distribution': [float(x) for x in result.expert_usage_distribution],
+                'ttt_update_count': int(result.ttt_update_count),
+                'energy_savings_percent': float(result.energy_savings_percent),
+                'accuracy_loss_percent': float(result.accuracy_loss_percent)
             },
             'timestamp': time.time()
         }
