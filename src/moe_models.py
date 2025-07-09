@@ -6,6 +6,7 @@ import math
 import time
 from typing import Dict, Tuple, Any, Optional, List, DefaultDict
 from dataclasses import dataclass, field
+from collections import defaultdict
 
 # Import NECTAR components (GpuSystemMonitor, KernelCostModel are fine at top level)
 from src.monitor import GpuSystemMonitor
@@ -502,6 +503,377 @@ class CapacityBasedRouter(nn.Module):
             "router_z_loss": router_z_loss,
             "expert_usage": tokens_per_expert_top1, # Actual counts for logging (from valid top-1)
         }
+
+
+class NetworkTopologyOptimizer:
+    """
+    Optimizes expert placement and data movement across GPU cluster.
+    Reduces inter-GPU communication and balances load.
+    """
+    def __init__(self, num_gpus: int, num_experts: int, 
+                 bandwidth_matrix: Optional[torch.Tensor] = None,
+                 latency_matrix: Optional[torch.Tensor] = None):
+        self.num_gpus = num_gpus
+        self.num_experts = num_experts
+        self.experts_per_gpu = num_experts // num_gpus
+        
+        # Network topology matrices (if not provided, assume uniform)
+        if bandwidth_matrix is None:
+            self.bandwidth_matrix = torch.ones(num_gpus, num_gpus) * 100.0  # GB/s
+        else:
+            self.bandwidth_matrix = bandwidth_matrix
+            
+        if latency_matrix is None:
+            self.latency_matrix = torch.ones(num_gpus, num_gpus) * 0.001  # 1ms
+        else:
+            self.latency_matrix = latency_matrix
+        
+        # Expert placement strategy
+        self.placement_strategy = "load_balanced"  # "load_balanced", "bandwidth_optimized", "thermal_aware"
+        
+        # Track expert usage patterns
+        self.expert_usage_history = defaultdict(list)
+        self.gpu_load_history = defaultdict(list)
+        
+    def optimize_expert_placement(self, expert_usage_stats: Dict[int, float],
+                                gpu_temps: List[float],
+                                gpu_memory_usage: List[float]) -> Dict[int, int]:
+        """
+        Optimize expert placement based on usage patterns and hardware state.
+        Returns mapping from expert_id to gpu_id.
+        """
+        if self.placement_strategy == "load_balanced":
+            return self._load_balanced_placement(expert_usage_stats, gpu_temps, gpu_memory_usage)
+        elif self.placement_strategy == "bandwidth_optimized":
+            return self._bandwidth_optimized_placement(expert_usage_stats)
+        elif self.placement_strategy == "thermal_aware":
+            return self._thermal_aware_placement(expert_usage_stats, gpu_temps)
+        else:
+            return self._default_placement()
+    
+    def _load_balanced_placement(self, expert_usage_stats: Dict[int, float],
+                               gpu_temps: List[float],
+                               gpu_memory_usage: List[float]) -> Dict[int, int]:
+        """Place experts to balance load across GPUs."""
+        # Sort experts by usage (descending)
+        sorted_experts = sorted(expert_usage_stats.items(), key=lambda x: x[1], reverse=True)
+        
+        # Calculate GPU capacity scores (lower temp and memory usage = higher capacity)
+        gpu_capacities = []
+        for i in range(self.num_gpus):
+            temp_score = max(0, 1.0 - (gpu_temps[i] - 30) / 60)  # Normalize temp to [0,1]
+            memory_score = max(0, 1.0 - gpu_memory_usage[i])
+            capacity = temp_score * 0.6 + memory_score * 0.4
+            gpu_capacities.append(capacity)
+        
+        # Place experts on GPUs with highest capacity
+        placement = {}
+        gpu_loads = [0.0] * self.num_gpus
+        
+        for expert_id, usage in sorted_experts:
+            # Find GPU with lowest load relative to capacity
+            best_gpu = 0
+            best_score = float('inf')
+            
+            for gpu_id in range(self.num_gpus):
+                load_ratio = gpu_loads[gpu_id] / (gpu_capacities[gpu_id] + 1e-8)
+                if load_ratio < best_score:
+                    best_score = load_ratio
+                    best_gpu = gpu_id
+            
+            placement[expert_id] = best_gpu
+            gpu_loads[best_gpu] += usage
+        
+        return placement
+    
+    def _bandwidth_optimized_placement(self, expert_usage_stats: Dict[int, float]) -> Dict[int, int]:
+        """Place experts to minimize inter-GPU communication."""
+        # Group experts that are frequently used together
+        expert_groups = self._identify_expert_groups(expert_usage_stats)
+        
+        placement = {}
+        gpu_loads = [0.0] * self.num_gpus
+        
+        for group in expert_groups:
+            # Place entire group on same GPU if possible
+            target_gpu = self._find_best_gpu_for_group(group, gpu_loads)
+            
+            for expert_id in group:
+                placement[expert_id] = target_gpu
+                gpu_loads[target_gpu] += expert_usage_stats.get(expert_id, 0.0)
+        
+        return placement
+    
+    def _thermal_aware_placement(self, expert_usage_stats: Dict[int, float],
+                               gpu_temps: List[float]) -> Dict[int, int]:
+        """Place experts considering thermal constraints."""
+        # Sort GPUs by temperature (ascending)
+        gpu_temp_indices = sorted(range(self.num_gpus), key=lambda i: gpu_temps[i])
+        
+        # Sort experts by usage (descending)
+        sorted_experts = sorted(expert_usage_stats.items(), key=lambda x: x[1], reverse=True)
+        
+        placement = {}
+        gpu_loads = [0.0] * self.num_gpus
+        
+        for expert_id, usage in sorted_experts:
+            # Place high-usage experts on cooler GPUs
+            for gpu_id in gpu_temp_indices:
+                if gpu_loads[gpu_id] < 1.0:  # Assume max load of 1.0
+                    placement[expert_id] = gpu_id
+                    gpu_loads[gpu_id] += usage
+                    break
+        
+        return placement
+    
+    def _identify_expert_groups(self, expert_usage_stats: Dict[int, float]) -> List[List[int]]:
+        """Identify groups of experts that are frequently used together."""
+        # Simple heuristic: group experts by usage patterns
+        # In practice, this would use correlation analysis of usage patterns
+        groups = []
+        used_experts = set()
+        
+        for expert_id in range(self.num_experts):
+            if expert_id in used_experts:
+                continue
+                
+            # Create group with this expert and nearby experts
+            group = [expert_id]
+            used_experts.add(expert_id)
+            
+            # Add nearby experts (simple heuristic)
+            for other_id in range(expert_id + 1, min(expert_id + 4, self.num_experts)):
+                if other_id not in used_experts:
+                    group.append(other_id)
+                    used_experts.add(other_id)
+            
+            groups.append(group)
+        
+        return groups
+    
+    def _find_best_gpu_for_group(self, expert_group: List[int], gpu_loads: List[float]) -> int:
+        """Find the best GPU for placing a group of experts."""
+        best_gpu = 0
+        best_score = float('inf')
+        
+        for gpu_id in range(self.num_gpus):
+            # Score based on current load and bandwidth to other GPUs
+            load_score = gpu_loads[gpu_id]
+            bandwidth_score = self._calculate_bandwidth_score(gpu_id, expert_group)
+            
+            total_score = load_score + bandwidth_score * 0.1
+            if total_score < best_score:
+                best_score = total_score
+                best_gpu = gpu_id
+        
+        return best_gpu
+    
+    def _calculate_bandwidth_score(self, gpu_id: int, expert_group: List[int]) -> float:
+        """Calculate bandwidth score for placing experts on this GPU."""
+        # Lower score = better bandwidth
+        total_score = 0.0
+        
+        for other_gpu in range(self.num_gpus):
+            if other_gpu != gpu_id:
+                # Penalize low bandwidth connections
+                bandwidth = self.bandwidth_matrix[gpu_id, other_gpu]
+                total_score += 1.0 / (bandwidth + 1e-8)
+        
+        return total_score
+    
+    def _default_placement(self) -> Dict[int, int]:
+        """Default round-robin placement."""
+        placement = {}
+        for expert_id in range(self.num_experts):
+            placement[expert_id] = expert_id % self.num_gpus
+        return placement
+    
+    def update_usage_stats(self, expert_usage: Dict[int, int], gpu_loads: List[float]):
+        """Update usage statistics for optimization."""
+        for expert_id, usage in expert_usage.items():
+            self.expert_usage_history[expert_id].append(usage)
+            # Keep only recent history
+            if len(self.expert_usage_history[expert_id]) > 100:
+                self.expert_usage_history[expert_id] = self.expert_usage_history[expert_id][-50:]
+        
+        for gpu_id, load in enumerate(gpu_loads):
+            self.gpu_load_history[gpu_id].append(load)
+            if len(self.gpu_load_history[gpu_id]) > 100:
+                self.gpu_load_history[gpu_id] = self.gpu_load_history[gpu_id][-50:]
+    
+    def get_communication_cost(self, expert_placement: Dict[int, int], 
+                             token_routing: Dict[int, List[int]]) -> float:
+        """Calculate communication cost for given placement and routing."""
+        total_cost = 0.0
+        
+        for token_id, expert_ids in token_routing.items():
+            # Find which GPUs these experts are on
+            gpu_ids = set(expert_placement[expert_id] for expert_id in expert_ids)
+            
+            if len(gpu_ids) > 1:
+                # Cross-GPU communication needed
+                for gpu1 in gpu_ids:
+                    for gpu2 in gpu_ids:
+                        if gpu1 != gpu2:
+                            # Add bandwidth and latency cost
+                            bandwidth_cost = 1.0 / self.bandwidth_matrix[gpu1, gpu2]
+                            latency_cost = self.latency_matrix[gpu1, gpu2]
+                            total_cost += bandwidth_cost + latency_cost
+        
+        return total_cost
+
+class DistributedMoELayer(nn.Module):
+    """
+    Distributed MoE layer with network topology optimization.
+    Reduces data movement and balances load across GPUs.
+    """
+    def __init__(self, d_model: int, num_experts: int, num_gpus: int,
+                 router_class, expert_class, top_k: int = 2):
+        super().__init__()
+        self.d_model = d_model
+        self.num_experts = num_experts
+        self.num_gpus = num_gpus
+        self.top_k = top_k
+        
+        # Network topology optimizer
+        self.topology_optimizer = NetworkTopologyOptimizer(num_gpus, num_experts)
+        
+        # Expert placement (expert_id -> gpu_id)
+        self.expert_placement = self.topology_optimizer._default_placement()
+        
+        # Create experts distributed across GPUs
+        self.experts = nn.ModuleList()
+        for expert_id in range(num_experts):
+            gpu_id = self.expert_placement[expert_id]
+            expert = expert_class(d_model)
+            # In real implementation, would move expert to specific GPU
+            self.experts.append(expert)
+        
+        # Router (replicated on each GPU)
+        self.router = router_class(d_model, num_experts, top_k)
+        
+        # Communication buffers
+        self.communication_buffers = {}
+        
+    def forward(self, x: torch.Tensor, ttt_context: Optional[Dict[str, Any]] = None) -> torch.Tensor:
+        batch_size, seq_len, d_model = x.shape
+        
+        # Get routing decisions
+        expert_indices, expert_weights, router_metadata = self.router(x, ttt_context)
+        
+        # Optimize expert placement if needed
+        if self._should_reoptimize_placement():
+            self._reoptimize_placement(router_metadata)
+        
+        # Process tokens with minimal data movement
+        output = torch.zeros_like(x)
+        
+        # Group tokens by their target experts to minimize communication
+        expert_token_groups = self._group_tokens_by_experts(expert_indices, expert_weights)
+        
+        for expert_id, token_data in expert_token_groups.items():
+            gpu_id = self.expert_placement[expert_id]
+            tokens, weights = token_data
+            
+            if len(tokens) > 0:
+                # Process tokens for this expert
+                expert_output = self.experts[expert_id](tokens)
+                
+                # Weight and scatter back to original positions
+                weighted_output = expert_output * weights.unsqueeze(-1)
+                output.scatter_add_(0, tokens.unsqueeze(-1).expand(-1, d_model), weighted_output)
+        
+        return output
+    
+    def _should_reoptimize_placement(self) -> bool:
+        """Check if expert placement should be reoptimized."""
+        # Reoptimize every 1000 forward passes
+        return hasattr(self, '_forward_count') and self._forward_count % 1000 == 0
+    
+    def _reoptimize_placement(self, router_metadata: Dict[str, Any]):
+        """Reoptimize expert placement based on current usage patterns."""
+        if 'expert_usage' in router_metadata:
+            expert_usage = router_metadata['expert_usage']
+            
+            # Convert to usage statistics
+            usage_stats = {}
+            for expert_id, usage in enumerate(expert_usage):
+                usage_stats[expert_id] = float(usage)
+            
+            # Get current GPU state (would come from monitoring)
+            gpu_temps = [50.0] * self.num_gpus  # Placeholder
+            gpu_memory = [0.5] * self.num_gpus   # Placeholder
+            
+            # Optimize placement
+            new_placement = self.topology_optimizer.optimize_expert_placement(
+                usage_stats, gpu_temps, gpu_memory
+            )
+            
+            # Update placement (in real implementation, would migrate experts)
+            self.expert_placement = new_placement
+    
+    def _group_tokens_by_experts(self, expert_indices: torch.Tensor, 
+                                expert_weights: torch.Tensor) -> Dict[int, Tuple[torch.Tensor, torch.Tensor]]:
+        """Group tokens by their target experts to minimize communication."""
+        batch_size, seq_len, top_k = expert_indices.shape
+        
+        expert_groups = defaultdict(lambda: ([], []))
+        
+        for b in range(batch_size):
+            for s in range(seq_len):
+                for k in range(top_k):
+                    expert_id = expert_indices[b, s, k].item()
+                    weight = expert_weights[b, s, k].item()
+                    
+                    if weight > 0.01:  # Only consider significant weights
+                        token_idx = b * seq_len + s
+                        expert_groups[expert_id][0].append(token_idx)
+                        expert_groups[expert_id][1].append(weight)
+        
+        # Convert to tensors
+        result = {}
+        for expert_id, (token_indices, weights) in expert_groups.items():
+            if token_indices:
+                result[expert_id] = (
+                    torch.tensor(token_indices, dtype=torch.long),
+                    torch.tensor(weights, dtype=torch.float)
+                )
+        
+        return result
+    
+    def get_communication_stats(self) -> Dict[str, float]:
+        """Get communication statistics."""
+        return {
+            'cross_gpu_communications': len(set(self.expert_placement.values())),
+            'load_imbalance': self._calculate_load_imbalance(),
+            'bandwidth_utilization': self._calculate_bandwidth_utilization()
+        }
+    
+    def _calculate_load_imbalance(self) -> float:
+        """Calculate load imbalance across GPUs."""
+        gpu_loads = [0] * self.num_gpus
+        for expert_id, gpu_id in self.expert_placement.items():
+            gpu_loads[gpu_id] += 1
+        
+        if not gpu_loads:
+            return 0.0
+        
+        mean_load = sum(gpu_loads) / len(gpu_loads)
+        variance = sum((load - mean_load) ** 2 for load in gpu_loads) / len(gpu_loads)
+        return math.sqrt(variance) / (mean_load + 1e-8)
+    
+    def _calculate_bandwidth_utilization(self) -> float:
+        """Calculate average bandwidth utilization."""
+        total_bandwidth = 0.0
+        count = 0
+        
+        for i in range(self.num_gpus):
+            for j in range(self.num_gpus):
+                if i != j:
+                    total_bandwidth += self.topology_optimizer.bandwidth_matrix[i, j]
+                    count += 1
+        
+        return total_bandwidth / (count + 1e-8)
 
 
 class OptimizedMoELayer(nn.Module):

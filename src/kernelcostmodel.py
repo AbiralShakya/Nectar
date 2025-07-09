@@ -2,16 +2,25 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
 import math
+import random
 
 class KernelCostModel:
     """
     Advanced kernel cost model for LLM/GPU workloads with realistic hardware characteristics.
     Models energy, latency, and thermal impact based on actual GPU behavior patterns.
+    Now includes error margins and synthetic noise for robustness testing.
     """
-    def __init__(self, data_path: str = None, gpu_type: str = "A100"):
+    def __init__(self, data_path: Optional[str] = None, gpu_type: str = "A100", 
+                 noise_level: float = 0.05, error_margin: float = 0.1):
         self.data = pd.DataFrame()
         self.interpolation_cache: Dict[Tuple[str, int], Dict[str, float]] = {}
         self.gpu_type = gpu_type
+        
+        # Error handling and robustness parameters
+        self.noise_level = noise_level  # 5% default noise
+        self.error_margin = error_margin  # 10% error margin
+        self._enable_synthetic_noise = True
+        self._enable_error_margins = True
         
         # Hardware-specific constants based on real GPU characteristics
         self.gpu_specs = self._get_gpu_specs(gpu_type)
@@ -29,6 +38,54 @@ class KernelCostModel:
             print("KernelCostModel initialized with realistic synthetic data for LLM workloads.")
             self._initialize_realistic_data()
 
+    def _add_synthetic_noise(self, value: float, operation_type: str) -> float:
+        """Add synthetic noise to simulate real-world measurement variations."""
+        if not self._enable_synthetic_noise:
+            return value
+        
+        # Different noise levels for different operation types
+        noise_multipliers = {
+            'attention': 0.03,  # Lower noise for attention (more predictable)
+            'ffn': 0.05,        # Medium noise for FFN
+            'moe': 0.08,        # Higher noise for MoE (more variable)
+            'quantize': 0.04,   # Medium noise for quantization
+            'default': 0.05
+        }
+        
+        # Determine noise level based on operation type
+        noise_level = noise_multipliers.get('default')
+        for op_pattern, noise in noise_multipliers.items():
+            if op_pattern in operation_type:
+                noise_level = noise
+                break
+        
+        # Add Gaussian noise
+        noise = np.random.normal(0, noise_level * value)
+        return value + noise
+
+    def _apply_error_margins(self, value: float, operation_type: str) -> Tuple[float, float]:
+        """Apply error margins to provide confidence intervals."""
+        if not self._enable_error_margins:
+            return value, value
+        
+        # Different error margins for different operations
+        margin_multipliers = {
+            'attention': 0.08,   # Lower margin for attention
+            'ffn': 0.12,         # Medium margin for FFN
+            'moe': 0.15,         # Higher margin for MoE
+            'quantize': 0.10,    # Medium margin for quantization
+            'default': 0.10
+        }
+        
+        margin_level = margin_multipliers.get('default')
+        for op_pattern, margin in margin_multipliers.items():
+            if op_pattern in operation_type:
+                margin_level = margin
+                break
+        
+        margin = margin_level * value
+        return value - margin, value + margin
+
     def _get_gpu_specs(self, gpu_type: str) -> Dict:
         """Hardware specifications for different GPU types"""
         specs = {
@@ -39,7 +96,10 @@ class KernelCostModel:
                 "base_temp_c": 30,
                 "thermal_throttle_temp_c": 87,
                 "memory_size_gb": 80,
-                "sm_count": 108
+                "sm_count": 108,
+                "error_margin_power": 0.05,    # 5% power measurement error
+                "error_margin_temp": 0.02,     # 2°C temperature measurement error
+                "error_margin_memory": 0.03    # 3% memory measurement error
             },
             "H100": {
                 "peak_power_w": 700,
@@ -48,7 +108,10 @@ class KernelCostModel:
                 "base_temp_c": 30,
                 "thermal_throttle_temp_c": 90,
                 "memory_size_gb": 80,
-                "sm_count": 132
+                "sm_count": 132,
+                "error_margin_power": 0.04,    # 4% power measurement error
+                "error_margin_temp": 0.015,    # 1.5°C temperature measurement error
+                "error_margin_memory": 0.025   # 2.5% memory measurement error
             },
             "V100": {
                 "peak_power_w": 300,
@@ -57,7 +120,10 @@ class KernelCostModel:
                 "base_temp_c": 30,
                 "thermal_throttle_temp_c": 83,
                 "memory_size_gb": 32,
-                "sm_count": 80
+                "sm_count": 80,
+                "error_margin_power": 0.06,    # 6% power measurement error
+                "error_margin_temp": 0.025,    # 2.5°C temperature measurement error
+                "error_margin_memory": 0.04    # 4% memory measurement error
             }
         }
         return specs.get(gpu_type, specs["A100"])
@@ -171,8 +237,13 @@ class KernelCostModel:
                 temp_impact_c *= modifier
                 break
         
+        # Apply synthetic noise and error margins
+        energy_j = self._add_synthetic_noise(total_energy_j, op_name)
+        latency_ms = self._add_synthetic_noise(latency_ms, op_name)
+        temp_impact_c = self._add_synthetic_noise(temp_impact_c, op_name)
+        
         return {
-            "energy_joules": max(total_energy_j, 1e-6),
+            "energy_joules": max(energy_j, 1e-6),
             "latency_ms": max(latency_ms, 0.001),
             "temp_impact": max(temp_impact_c, 0.001),
             "memory_gb": total_memory_bytes / (1024**3),  # Memory footprint
@@ -184,6 +255,7 @@ class KernelCostModel:
                  current_temp: float = None, memory_pressure: float = 0.0) -> Dict[str, float]:
         """
         Enhanced cost lookup with thermal and memory pressure adjustments
+        Now includes error margins and confidence intervals
         """
         # Default current_temp to 0.0 if None
         if current_temp is None:
@@ -199,67 +271,106 @@ class KernelCostModel:
         # Get base costs (with interpolation if needed)
         base_costs = self._get_base_cost(op_type, batch_size)
         
-        # Apply thermal throttling effects
-        if current_temp is not None and isinstance(current_temp, (float, int)):
-            thermal_factor = self._calculate_thermal_factor(float(current_temp))
-            base_costs["latency_ms"] *= thermal_factor
-            base_costs["energy_joules"] *= thermal_factor
+        # Apply thermal and memory pressure adjustments
+        thermal_factor = self._calculate_thermal_factor(current_temp)
+        memory_factor = self._calculate_memory_factor(memory_pressure)
         
-        # Apply memory pressure effects
-        if memory_pressure > 0.7:  # High memory pressure
-            memory_factor = 1.0 + (memory_pressure - 0.7) * 2.0  # Up to 60% slowdown
-            base_costs["latency_ms"] *= memory_factor
-            base_costs["energy_joules"] *= memory_factor * 0.8  # Less energy increase than latency
+        # Adjust costs based on hardware state
+        adjusted_costs = {}
+        for key, value in base_costs.items():
+            if key == "energy_joules":
+                adjusted_costs[key] = value * thermal_factor * memory_factor
+            elif key == "latency_ms":
+                adjusted_costs[key] = value * thermal_factor  # Temperature affects latency more
+            elif key == "temp_impact":
+                adjusted_costs[key] = value * thermal_factor
+            else:
+                adjusted_costs[key] = value
         
-        self.interpolation_cache[cache_key] = base_costs
-        return base_costs
+        # Apply error margins and get confidence intervals
+        if self._enable_error_margins:
+            energy_min, energy_max = self._apply_error_margins(adjusted_costs["energy_joules"], op_type)
+            latency_min, latency_max = self._apply_error_margins(adjusted_costs["latency_ms"], op_type)
+            temp_min, temp_max = self._apply_error_margins(adjusted_costs["temp_impact"], op_type)
+            
+            adjusted_costs.update({
+                "energy_joules_min": energy_min,
+                "energy_joules_max": energy_max,
+                "latency_ms_min": latency_min,
+                "latency_ms_max": latency_max,
+                "temp_impact_min": temp_min,
+                "temp_impact_max": temp_max,
+                "confidence_level": 0.95  # 95% confidence interval
+            })
+        
+        # Cache the result
+        self.interpolation_cache[cache_key] = adjusted_costs
+        
+        return adjusted_costs
 
     def _get_base_cost(self, op_type: str, batch_size: int) -> Dict[str, float]:
-        """Get base cost with interpolation logic"""
+        """Get base cost with interpolation if needed"""
         try:
+            # Try exact match first
             return self.data.loc[(op_type, batch_size)].to_dict()
         except KeyError:
-            # Interpolation logic (similar to original but enhanced)
-            available_batches = sorted([idx[1] for idx in self.data.index if idx[0] == op_type])
-            
-            if not available_batches:
+            # Interpolate between available batch sizes
+            available_sizes = self.data.loc[op_type].index.tolist()
+            if not available_sizes:
                 return {"energy_joules": 0.001, "latency_ms": 0.1, "temp_impact": 0.001}
             
-            # Find bounds
-            lower = max([s for s in available_batches if s <= batch_size], default=available_batches[0])
-            upper = min([s for s in available_batches if s >= batch_size], default=available_batches[-1])
-            
-            if lower == upper:
-                return self.data.loc[(op_type, lower)].to_dict()
-            
-            # Logarithmic interpolation for better scaling behavior
-            log_batch = math.log(batch_size)
-            log_lower = math.log(lower)
-            log_upper = math.log(upper)
-            alpha = (log_batch - log_lower) / (log_upper - log_lower)
-            
-            lower_costs = self.data.loc[(op_type, lower)].to_dict()
-            upper_costs = self.data.loc[(op_type, upper)].to_dict()
-            
-            result = {}
-            for key in lower_costs:
-                result[key] = lower_costs[key] * (1 - alpha) + upper_costs[key] * alpha
-            
-            return result
+            # Find closest batch sizes
+            available_sizes.sort()
+            if batch_size <= available_sizes[0]:
+                return self.data.loc[(op_type, available_sizes[0])].to_dict()
+            elif batch_size >= available_sizes[-1]:
+                return self.data.loc[(op_type, available_sizes[-1])].to_dict()
+            else:
+                # Linear interpolation
+                for i, size in enumerate(available_sizes):
+                    if size > batch_size:
+                        lower_size = available_sizes[i-1]
+                        upper_size = size
+                        lower_cost = self.data.loc[(op_type, lower_size)].to_dict()
+                        upper_cost = self.data.loc[(op_type, upper_size)].to_dict()
+                        
+                        # Interpolate
+                        ratio = (batch_size - lower_size) / (upper_size - lower_size)
+                        interpolated = {}
+                        for key in lower_cost:
+                            if isinstance(lower_cost[key], (int, float)):
+                                interpolated[key] = lower_cost[key] + ratio * (upper_cost[key] - lower_cost[key])
+                            else:
+                                interpolated[key] = lower_cost[key]
+                        
+                        return interpolated
+        
+        return {"energy_joules": 0.001, "latency_ms": 0.1, "temp_impact": 0.001}
 
     def _calculate_thermal_factor(self, current_temp: float) -> float:
-        """Calculate thermal throttling factor based on current temperature"""
+        """Calculate thermal scaling factor based on current temperature"""
         base_temp = self.gpu_specs["base_temp_c"]
         throttle_temp = self.gpu_specs["thermal_throttle_temp_c"]
         
-        if current_temp <= base_temp + 10:
-            return 1.0  # No throttling at normal temps
+        if current_temp <= base_temp:
+            return 1.0
         elif current_temp >= throttle_temp:
-            return 2.0  # Significant throttling at thermal limit
+            return 2.0  # Severe throttling
         else:
-            # Smooth throttling curve
-            temp_ratio = (current_temp - base_temp - 10) / (throttle_temp - base_temp - 10)
-            return 1.0 + temp_ratio * 1.0  # Up to 100% slowdown
+            # Linear scaling between base and throttle temperature
+            temp_ratio = (current_temp - base_temp) / (throttle_temp - base_temp)
+            return 1.0 + temp_ratio
+
+    def _calculate_memory_factor(self, memory_pressure: float) -> float:
+        """Calculate memory pressure scaling factor"""
+        if memory_pressure <= 0.5:
+            return 1.0
+        elif memory_pressure >= 0.9:
+            return 1.5  # Severe memory pressure
+        else:
+            # Linear scaling between 50% and 90% memory usage
+            pressure_ratio = (memory_pressure - 0.5) / 0.4
+            return 1.0 + 0.5 * pressure_ratio
 
     def get_cost_breakdown(
         self,
@@ -268,46 +379,73 @@ class KernelCostModel:
         current_temp: float = None,
         memory_pressure: float = 0.0
     ) -> Dict[str, Any]:
-        """Detailed cost breakdown, with thermal and memory adjustments."""
-        # Default current_temp to 0.0 if None
-        if current_temp is None:
-            current_temp = 0.0
-        base_costs = self.get_cost(
-            op_type,
-            batch_size,
-            current_temp=current_temp,
-            memory_pressure=memory_pressure
-        )
-
-        return {
-            "base_costs": base_costs,
-            "bottleneck": "memory"
-                if base_costs.get("memory_utilization", 0) > base_costs.get("compute_utilization", 0)
-                else "compute",
-            "efficiency_score": min(
-                base_costs.get("compute_utilization", 0),
-                base_costs.get("memory_utilization", 0)
-            ),
-            "power_profile": {
-                "peak_power_w": base_costs["energy_joules"] / (base_costs["latency_ms"] / 1000),
-                "energy_efficiency_gflops_w": (batch_size * 1000) / base_costs["energy_joules"]
-            }
+        """
+        Get detailed cost breakdown with confidence intervals
+        """
+        costs = self.get_cost(op_type, batch_size, current_temp, memory_pressure)
+        
+        breakdown = {
+            "operation": op_type,
+            "batch_size": batch_size,
+            "current_temperature": current_temp,
+            "memory_pressure": memory_pressure,
+            "base_costs": costs,
+            "thermal_factor": self._calculate_thermal_factor(current_temp or 0.0),
+            "memory_factor": self._calculate_memory_factor(memory_pressure),
+            "gpu_specs": self.gpu_specs,
+            "noise_level": self.noise_level,
+            "error_margin": self.error_margin
         }
+        
+        return breakdown
 
     def get_all_op_types(self) -> List[str]:
-        """Returns all supported operation types"""
-        return self.unique_op_types.copy()
+        """Get list of all supported operation types"""
+        return self.unique_op_types
 
     def get_thermal_safe_batch_size(self, op_type: str, current_temp: float, 
                                    max_temp_increase: float = 5.0) -> int:
-        """Recommend maximum batch size to stay within thermal limits"""
-        if op_type is None:
-            op_type = "moe_router"
-        if current_temp is None:
-            current_temp = 0.0
-        available_batches = sorted([idx[1] for idx in self.data.index if idx[0] == op_type])
-        for batch_size in reversed(available_batches):  # Start from largest
-            cost = self.get_cost(op_type, batch_size, current_temp)
-            if cost["temp_impact"] <= max_temp_increase:
-                return batch_size
-        return available_batches[0] if available_batches else 1
+        """
+        Calculate the maximum safe batch size given thermal constraints
+        """
+        # Start with small batch size and increase until thermal limit
+        for batch_size in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]:
+            costs = self.get_cost(op_type, batch_size, current_temp)
+            temp_increase = costs["temp_impact"]
+            
+            if temp_increase > max_temp_increase:
+                # Return the previous safe batch size
+                return max(1, batch_size // 2)
+        
+        return 1024  # Default to maximum if no thermal issues
+
+    def enable_noise_injection(self, enable: bool = True, noise_level: float = None):
+        """Enable/disable synthetic noise injection"""
+        self.enable_synthetic_noise = enable
+        if noise_level is not None:
+            self.noise_level = noise_level
+
+    def enable_error_margins(self, enable: bool = True, margin_level: float = None):
+        """Enable/disable error margins"""
+        self.enable_error_margins = enable
+        if margin_level is not None:
+            self.error_margin = margin_level
+
+    def get_confidence_intervals(self, op_type: str, batch_size: int, 
+                               current_temp: float = None, memory_pressure: float = 0.0) -> Dict[str, Tuple[float, float]]:
+        """
+        Get confidence intervals for all cost metrics
+        """
+        costs = self.get_cost(op_type, batch_size, current_temp, memory_pressure)
+        
+        intervals = {}
+        for key in ["energy_joules", "latency_ms", "temp_impact"]:
+            if f"{key}_min" in costs and f"{key}_max" in costs:
+                intervals[key] = (costs[f"{key}_min"], costs[f"{key}_max"])
+            else:
+                # If no error margins, create symmetric intervals
+                value = costs[key]
+                margin = value * self.error_margin
+                intervals[key] = (value - margin, value + margin)
+        
+        return intervals

@@ -1,0 +1,65 @@
+error margins , add random noise to measurements, make sure the loss funtions dimensions are the same , understand it 
+
+
+add osme noise synthetically add data and then see how it affects the loss 
+
+network topology people care about 
+    reduce data movement getting more and more experts, each expert is smaller 
+
+    training cluster vs inference cluster 
+
+well formed solution wee what's makiing sense. one gpu at 0 C and everyhting else at 90 C for example to test 
+
+
+Timescale looking at dont't know if memory pressure works / matters transformer sequnatial so like does it matter with the time it takes fo ra matrix mul update
+
+8 GPU, X experts spread across 
+large context length, taking up large amount memory 
+all could be at the same epxerts (but maybe not) 
+
+with newwer hardware true for compute bound matrix mul
+
+all tokens in same boatch, bad for power, also true for runtime ? or somtimes optimize for power get 2nd best performance . 
+power and thermal for meric ? 
+
+biggest question (nah) : is optimizing for power or perfornace same goal ? 
+
+measureming performance, batzh size 1,2,3,4,5,6,etc in decode stage 
+
+runtime not scale lienalry (consider that loss is cubic function for example)
+
+combination of what batches will work 
+
+network to do if based on power, runtime optimizing bynetwork is hard. could generate a runtime dataset. time the kernel. 
+
+run it and colelct data. pforifle something first. don't want runtime to change too much. 
+
+could cahgne runtime. imbalnace, thermals, dont change totla number of compute
+
+paralleldlize change memory ops, bath size 8 all 8 map to 2 experts but now 4 epxerts 
+
+
+
+Run machiens for 5 min beforehand to make sure there is power difference. then run it 
+
+H100 @ 80 C mx mul longer than H100 60 C mx mul. how much dif ? after routing and all too 
+
+routing replicated on each GPU, each router can query hardware data. every ddevice info about all other devices (distributed) latency there 
+
+in prev communication op, each GPU has stats, do right before reouting phase adding more latency. end to end performance gain. 
+
+so do this at same time as the other computations 
+
+accuracy vs latency, info from 2 layers: less latency but also less accuracy
+
+try out in parallel settng. try with 4 a100 first 
+
+
+synthetic data, compare loss 
+
+parallel implemenation 
+maybe data generating stuff 
+
+focus on decode ? focus on prefil (dont use for prefil initialy)? 
+
+use mixtral 7B
