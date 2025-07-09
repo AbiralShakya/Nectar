@@ -13,7 +13,12 @@ import time
 import numpy as np
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    print("⚠ matplotlib not available - plots will be skipped")
 
 from src.moe_models import DistributedMoELayer, NetworkTopologyOptimizer
 from src.kernelcostmodel import KernelCostModel

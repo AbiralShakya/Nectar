@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import matplotlib.pyplot as plt
 
 from src.kernelcostmodel import KernelCostModel
-from models.ttt_router import LaCTEnergyAwareTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter
 
 @dataclass
 class ErrorMarginTestResult:
@@ -41,12 +41,11 @@ class ErrorMarginAnalyzer:
         self.kernel_cost_model = KernelCostModel(gpu_type="A100")
         
         # TTT Router
-        self.ttt_router = LaCTEnergyAwareTTTRouter(
+        self.ttt_router = EnergyAwareTTTRouter(
             d_model=args.d_model,
             num_experts=args.num_experts,
             top_k=2,
-            lambda_energy=0.05,
-            chunk_size=500
+            lambda_energy=0.05
         ).to(self.device)
         
         # Load synthetic data

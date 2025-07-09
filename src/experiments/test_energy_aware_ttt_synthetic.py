@@ -19,7 +19,7 @@ from src.moe_models import DistributedMoELayer, NetworkTopologyOptimizer
 from src.kernelcostmodel import KernelCostModel
 from src.monitor import GpuSystemMonitor
 from src.thermal_signal import ThermalAwareRouter, ThermalState
-from models.ttt_router import LaCTEnergyAwareTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter
 
 @dataclass
 class TTTTestResult:
@@ -54,12 +54,11 @@ class EnergyAwareTTTSyntheticTester:
         self.gpu_monitor = GpuSystemMonitor()
         
         # TTT Router
-        self.ttt_router = LaCTEnergyAwareTTTRouter(
+        self.ttt_router = EnergyAwareTTTRouter(
             d_model=args.d_model,
             num_experts=args.num_experts,
             top_k=args.moe_top_k,
-            lambda_energy=args.lambda_energy,
-            chunk_size=1000
+            lambda_energy=args.lambda_energy
         ).to(self.device)
         
         # Thermal router
@@ -167,7 +166,7 @@ class EnergyAwareTTTSyntheticTester:
         avg_accuracy = total_accuracy / num_batches
         avg_routing_entropy = np.mean(routing_entropies)
         expert_usage_distribution = (expert_usage_counts / expert_usage_counts.sum()).tolist()
-        avg_thermal_imbalance = np.mean(thermal_imbalance_scores) if thermal_imbalance_scores else 0.0
+        avg_thermal_imbalance = float(np.mean(thermal_imbalance_scores) if thermal_imbalance_scores else 0.0)
         
         # Calculate improvements
         baseline_energy = self._get_baseline_energy()
@@ -186,7 +185,7 @@ class EnergyAwareTTTSyntheticTester:
             avg_power_watt=avg_power,
             avg_accuracy=avg_accuracy,
             thermal_imbalance_score=avg_thermal_imbalance,
-            routing_entropy=avg_routing_entropy,
+            routing_entropy=float(avg_routing_entropy),
             expert_usage_distribution=expert_usage_distribution,
             ttt_update_count=self.ttt_router.ttt_update_count,
             energy_savings_percent=energy_savings,

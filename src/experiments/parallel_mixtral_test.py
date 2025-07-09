@@ -14,7 +14,7 @@ from src.moe_models import DistributedMoELayer, NetworkTopologyOptimizer
 from src.kernelcostmodel import KernelCostModel
 from src.monitor import GpuSystemMonitor
 from src.thermal_signal import ThermalAwareRouter, ThermalState
-from models.ttt_router import LaCTEnergyAwareTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter
 
 @dataclass
 class MixtralConfig:
@@ -73,12 +73,11 @@ class ParallelMixtralTester:
         
         # TTT router
         if config.enable_ttt:
-            self.ttt_router = LaCTEnergyAwareTTTRouter(
+            self.ttt_router = EnergyAwareTTTRouter(
                 d_model=mixtral_config.d_model,
                 num_experts=mixtral_config.num_experts,
                 top_k=2,
-                lambda_energy=0.001,
-                chunk_size=1000
+                lambda_energy=0.001
             )
         
         # Kernel cost model

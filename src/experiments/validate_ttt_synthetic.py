@@ -19,7 +19,7 @@ from src.moe_models import DistributedMoELayer, NetworkTopologyOptimizer
 from src.kernelcostmodel import KernelCostModel
 from src.monitor import GpuSystemMonitor
 from src.thermal_signal import ThermalAwareRouter, ThermalState, ThermalSignalProcessor
-from models.ttt_router import LaCTEnergyAwareTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter
 
 @dataclass
 class TTTValidationResult:
@@ -54,12 +54,11 @@ class TTTValidationTester:
         self.gpu_monitor = GpuSystemMonitor()
         
         # TTT Router with all features enabled
-        self.ttt_router = LaCTEnergyAwareTTTRouter(
+        self.ttt_router = EnergyAwareTTTRouter(
             d_model=args.d_model,
             num_experts=args.num_experts,
             top_k=args.moe_top_k,
-            lambda_energy=args.lambda_energy,
-            chunk_size=args.chunk_size
+            lambda_energy=args.lambda_energy
         ).to(self.device)
         
         # Thermal components

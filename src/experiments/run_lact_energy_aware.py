@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 from transformers import AutoConfig, AutoTokenizer
 from models.distilgpt2_with_moe import DistilGPT2WithMoE
-from models.ttt_router import LaCTEnergyAwareTTTRouter, SimpleTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter, SimpleTTTRouter
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import matplotlib.pyplot as plt
@@ -233,9 +233,11 @@ def main():
     # LaCT Energy-Aware Router
     lact_energy = DistilGPT2WithMoE(config, moe_num_experts=args.num_experts, moe_top_k=args.moe_top_k)
     for layer in lact_energy.transformer.transformer.h:
-        layer.ffn.set_router(LaCTEnergyAwareTTTRouter(
-            config.hidden_size, args.num_experts, args.moe_top_k, 
-            lambda_energy=args.lambda_energy, chunk_size=args.chunk_size
+        layer.ffn.set_router(EnergyAwareTTTRouter(
+            d_model=args.d_model,
+            num_experts=args.num_experts,
+            top_k=args.moe_top_k,
+            lambda_energy=args.lambda_energy
         ))
     run_lact_experiment('lact_energy_aware', lact_energy, dataloader, device, results_dir,
                         kernel_cost_model=kernel_cost_model, gpu_monitor=gpu_monitor,

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 from src.thermal_signal import ThermalAwareRouter, ThermalState, ThermalSignalProcessor
 from src.moe_models import DistributedMoELayer
-from models.ttt_router import LaCTEnergyAwareTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter
 
 @dataclass
 class ThermalTestResult:
@@ -52,12 +52,11 @@ class ThermalAwareRoutingTester:
         )
         
         # TTT Router with thermal awareness
-        self.ttt_router = LaCTEnergyAwareTTTRouter(
+        self.ttt_router = EnergyAwareTTTRouter(
             d_model=args.d_model,
             num_experts=args.num_experts,
             top_k=2,
-            lambda_energy=0.05,
-            chunk_size=500
+            lambda_energy=0.05
         ).to(self.device)
         
         # Load synthetic data

@@ -17,11 +17,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 's
 from src.moe_models import MoEConfig, MoETransformerBlock, OptimizedMoELayer, SwiGLUExpert, OptimizedQuantizedExpert, DistributedMoELayer, NetworkTopologyOptimizer
 # from routers import RoutingStrategy, GpuSystemMonitor, AdaptiveRouter  # Commented out - not needed for this test
 from src.kernelcostmodel import KernelCostModel
-from data_utils import DataLoaderManager
+from src.data_utils import DataLoaderManager
 from metrics_logger import MetricsLogger
 from src.monitor import GpuSystemMonitor
 from src.thermal_signal import ThermalAwareRouter, ThermalState
-from models.ttt_router import LaCTEnergyAwareTTTRouter
+from models.ttt_router import EnergyAwareTTTRouter
 
 @dataclass
 class OptimizationTarget:
