@@ -39,7 +39,7 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
         self.last_estimated_energy = 0.0  # Scalar or tensor (per-expert)
         self.ttt_update_count = 0
         # Add energy penalty scaling factor - energy estimates are already in joules
-        self.energy_scale = 0.01  # Scale down the penalty to reasonable levels
+        self.energy_scale = 0.001  # Sweet spot: small enough to not break routing, large enough to have effect
         # Track per-expert energy costs (initialize with uniform distribution)
         self.expert_energy_costs = torch.ones(num_experts) * 1.0  # Normalized costs
         self.expert_usage_count = torch.zeros(num_experts)  # Track usage for adaptive costs
