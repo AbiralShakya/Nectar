@@ -47,8 +47,9 @@ class ThermalAwareRoutingTester:
         )
         
         self.thermal_processor = ThermalSignalProcessor(
-            window_size=100,
-            threshold_temperature=80.0
+            num_gpus=args.num_gpus,
+            thermal_threshold=80.0,
+            history_window=100
         )
         
         # TTT Router - Use EnergyAwareTTTRouter instead of LaCT
@@ -59,18 +60,11 @@ class ThermalAwareRoutingTester:
             lambda_energy=0.05
         ).to(self.device)
         
-        # Load synthetic data
-        self.synthetic_data = self._load_synthetic_data(args.synthetic_data_file)
-        
         # Parse thermal scenarios and memory pressure levels
         self.thermal_scenarios = args.thermal_scenarios.split(',')
         self.memory_pressure_levels = [float(x) for x in args.memory_pressure_levels.split(',')]
         
-    def _load_synthetic_data(self, data_file: str) -> List[Dict[str, Any]]:
-        """Load synthetic dataset."""
-        with open(data_file, 'r') as f:
-            data = json.load(f)
-        return data['data_points']
+
     
     def run_test(self) -> List[ThermalTestResult]:
         """Run comprehensive thermal-aware routing test."""
@@ -121,8 +115,8 @@ class ThermalAwareRoutingTester:
             # Update thermal state
             self.thermal_router.update_thermal_state(0, thermal_state)
             
-            # Process thermal signal
-            thermal_signal = self.thermal_processor.process_thermal_signal(thermal_state)
+            # Get thermal routing signals
+            thermal_signal = self.thermal_processor.get_thermal_routing_signals()
             
             # Run routing with thermal awareness
             start_time = time.time()
@@ -410,7 +404,7 @@ def main():
                        help="Comma-separated thermal scenarios")
     parser.add_argument("--memory_pressure_levels", type=str, default="0.3,0.5,0.7,0.9",
                        help="Comma-separated memory pressure levels")
-    parser.add_argument("--synthetic_data_file", type=str, required=True, help="Synthetic data file")
+    parser.add_argument("--synthetic_data_file", type=str, default="", help="Synthetic data file (not used in simplified version)")
     parser.add_argument("--output_file", type=str, required=True, help="Output file")
     parser.add_argument("--save_plots", action="store_true", help="Save plots")
     
