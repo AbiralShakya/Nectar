@@ -1,0 +1,32 @@
+{
+  "lambda_1.0": {
+    "total_energy": 126954.5,
+    "avg_diversity": 1.3900532184692416,
+    "energy_savings_percent": -65.30533854166667,
+    "ttt_updates": 100
+  },
+  "lambda_0.01": {
+    "total_energy": 92378.0,
+    "avg_diversity": 2.066748969551755,
+    "energy_savings_percent": -20.283854166666668,
+    "ttt_updates": 100
+  },
+  "lambda_0.5": {
+    "total_energy": 127985.0,
+    "avg_diversity": 1.388454793240773,
+    "energy_savings_percent": -66.64713541666667,
+    "ttt_updates": 100
+  },
+  "lambda_0.0": {
+    "total_energy": 91610.0,
+    "avg_diversity": 2.0700870603899855,
+    "energy_savings_percent": -19.283854166666668,
+    "ttt_updates": 100
+  },
+  "lambda_0.1": {
+    "total_energy": 123062.0,
+    "avg_diversity": 1.6205393097247967,
+    "energy_savings_percent": -60.23697916666667,
+    "ttt_updates": 100
+  }
+}

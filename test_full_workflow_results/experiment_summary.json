@@ -1,0 +1,26 @@
+{
+  "lambda_0.1": {
+    "total_energy": 62062.0,
+    "avg_diversity": 1.604525551309948,
+    "energy_savings_percent": -61.61979166666667,
+    "ttt_updates": 50
+  },
+  "lambda_0.0": {
+    "total_energy": 44768.5,
+    "avg_diversity": 2.0677733985787423,
+    "energy_savings_percent": -16.584635416666664,
+    "ttt_updates": 50
+  },
+  "lambda_0.01": {
+    "total_energy": 45953.5,
+    "avg_diversity": 2.0573679541767724,
+    "energy_savings_percent": -19.670572916666668,
+    "ttt_updates": 50
+  },
+  "lambda_0.5": {
+    "total_energy": 64565.5,
+    "avg_diversity": 1.3982676998003558,
+    "energy_savings_percent": -68.13932291666667,
+    "ttt_updates": 50
+  }
+}

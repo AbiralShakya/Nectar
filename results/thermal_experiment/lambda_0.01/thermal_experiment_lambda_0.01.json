@@ -1,0 +1,6799 @@
+{
+  "experiment_config": {
+    "num_experts": 8,
+    "cold_experts": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "hot_experts": [
+      6,
+      7
+    ],
+    "lambda_energy": 0.01,
+    "num_batches": 100,
+    "batch_size": 8,
+    "seq_length": 64,
+    "d_model": 768
+  },
+  "results": {
+    "total_energy": 92378.0,
+    "avg_diversity": 2.066748969551755,
+    "avg_thermal_imbalance": 0.463828125,
+    "energy_savings_percent": -20.283854166666668,
+    "total_steps": 100,
+    "ttt_updates": 100
+  },
+  "expert_usage": {
+    "0": {
+      "total_usage": 11810,
+      "avg_usage": 118.1,
+      "usage_trend": [
+        132,
+        122,
+        105,
+        116,
+        118,
+        116,
+        123,
+        121,
+        119,
+        126,
+        112,
+        117,
+        125,
+        102,
+        108,
+        133,
+        126,
+        101,
+        107,
+        124,
+        126,
+        106,
+        108,
+        133,
+        129,
+        108,
+        131,
+        133,
+        136,
+        111,
+        120,
+        117,
+        113,
+        103,
+        106,
+        107,
+        119,
+        94,
+        137,
+        129,
+        136,
+        108,
+        131,
+        99,
+        106,
+        134,
+        103,
+        148,
+        122,
+        107,
+        108,
+        107,
+        134,
+        122,
+        111,
+        103,
+        131,
+        122,
+        114,
+        121,
+        106,
+        118,
+        96,
+        111,
+        99,
+        109,
+        131,
+        109,
+        127,
+        124,
+        119,
+        120,
+        98,
+        103,
+        116,
+        134,
+        118,
+        112,
+        124,
+        97,
+        123,
+        134,
+        136,
+        138,
+        132,
+        125,
+        124,
+        113,
+        116,
+        121,
+        111,
+        120,
+        108,
+        131,
+        131,
+        132,
+        122,
+        112,
+        128,
+        96
+      ],
+      "is_cold": true,
+      "is_hot": false
+    },
+    "1": {
+      "total_usage": 11059,
+      "avg_usage": 110.59,
+      "usage_trend": [
+        125,
+        109,
+        106,
+        109,
+        114,
+        130,
+        104,
+        94,
+        116,
+        106,
+        97,
+        85,
+        87,
+        124,
+        118,
+        111,
+        85,
+        128,
+        111,
+        117,
+        130,
+        123,
+        128,
+        92,
+        138,
+        128,
+        95,
+        107,
+        98,
+        115,
+        88,
+        111,
+        111,
+        143,
+        125,
+        125,
+        123,
+        153,
+        79,
+        103,
+        78,
+        130,
+        89,
+        132,
+        125,
+        114,
+        128,
+        73,
+        103,
+        120,
+        117,
+        127,
+        87,
+        106,
+        99,
+        126,
+        105,
+        86,
+        116,
+        98,
+        127,
+        108,
+        118,
+        94,
+        122,
+        118,
+        97,
+        130,
+        98,
+        87,
+        150,
+        110,
+        137,
+        121,
+        100,
+        97,
+        129,
+        124,
+        104,
+        131,
+        115,
+        109,
+        94,
+        100,
+        93,
+        87,
+        96,
+        124,
+        113,
+        87,
+        102,
+        92,
+        102,
+        110,
+        130,
+        95,
+        93,
+        127,
+        94,
+        144
+      ],
+      "is_cold": true,
+      "is_hot": false
+    },
+    "2": {
+      "total_usage": 11252,
+      "avg_usage": 112.52,
+      "usage_trend": [
+        122,
+        121,
+        115,
+        117,
+        112,
+        111,
+        101,
+        109,
+        83,
+        122,
+        111,
+        142,
+        112,
+        97,
+        126,
+        106,
+        115,
+        110,
+        117,
+        113,
+        124,
+        107,
+        108,
+        111,
+        129,
+        142,
+        132,
+        111,
+        113,
+        121,
+        113,
+        92,
+        132,
+        110,
+        93,
+        110,
+        105,
+        104,
+        108,
+        112,
+        107,
+        114,
+        116,
+        141,
+        112,
+        106,
+        110,
+        108,
+        111,
+        107,
+        105,
+        97,
+        149,
+        113,
+        113,
+        114,
+        105,
+        120,
+        104,
+        117,
+        109,
+        124,
+        112,
+        114,
+        115,
+        93,
+        98,
+        100,
+        127,
+        96,
+        106,
+        112,
+        101,
+        145,
+        117,
+        113,
+        106,
+        109,
+        116,
+        108,
+        115,
+        111,
+        110,
+        117,
+        115,
+        118,
+        113,
+        109,
+        93,
+        111,
+        98,
+        105,
+        99,
+        111,
+        127,
+        129,
+        113,
+        108,
+        118,
+        103
+      ],
+      "is_cold": true,
+      "is_hot": false
+    },
+    "3": {
+      "total_usage": 12289,
+      "avg_usage": 122.89,
+      "usage_trend": [
+        138,
+        107,
+        120,
+        135,
+        134,
+        132,
+        97,
+        130,
+        134,
+        115,
+        134,
+        108,
+        123,
+        135,
+        123,
+        104,
+        118,
+        136,
+        128,
+        114,
+        138,
+        147,
+        133,
+        122,
+        110,
+        105,
+        112,
+        112,
+        115,
+        119,
+        117,
+        120,
+        123,
+        133,
+        139,
+        125,
+        107,
+        150,
+        109,
+        113,
+        127,
+        134,
+        105,
+        132,
+        138,
+        146,
+        130,
+        121,
+        126,
+        132,
+        126,
+        126,
+        117,
+        137,
+        140,
+        133,
+        121,
+        134,
+        131,
+        101,
+        130,
+        124,
+        145,
+        132,
+        128,
+        118,
+        117,
+        134,
+        114,
+        140,
+        142,
+        117,
+        124,
+        123,
+        104,
+        116,
+        114,
+        112,
+        121,
+        132,
+        126,
+        125,
+        115,
+        115,
+        98,
+        106,
+        125,
+        124,
+        118,
+        121,
+        117,
+        94,
+        131,
+        139,
+        100,
+        120,
+        124,
+        105,
+        100,
+        128
+      ],
+      "is_cold": true,
+      "is_hot": false
+    },
+    "4": {
+      "total_usage": 14964,
+      "avg_usage": 149.64,
+      "usage_trend": [
+        145,
+        171,
+        139,
+        152,
+        128,
+        150,
+        185,
+        128,
+        172,
+        166,
+        165,
+        147,
+        140,
+        158,
+        135,
+        163,
+        106,
+        138,
+        180,
+        169,
+        159,
+        144,
+        158,
+        159,
+        137,
+        165,
+        137,
+        156,
+        151,
+        173,
+        149,
+        170,
+        126,
+        163,
+        132,
+        130,
+        177,
+        115,
+        169,
+        171,
+        143,
+        116,
+        114,
+        148,
+        145,
+        178,
+        149,
+        125,
+        132,
+        160,
+        160,
+        140,
+        193,
+        103,
+        126,
+        150,
+        138,
+        112,
+        125,
+        197,
+        172,
+        146,
+        140,
+        133,
+        162,
+        173,
+        179,
+        172,
+        131,
+        131,
+        136,
+        169,
+        118,
+        127,
+        135,
+        158,
+        126,
+        142,
+        127,
+        140,
+        135,
+        205,
+        159,
+        165,
+        130,
+        152,
+        138,
+        141,
+        148,
+        148,
+        145,
+        130,
+        140,
+        182,
+        158,
+        180,
+        145,
+        208,
+        133,
+        173
+      ],
+      "is_cold": true,
+      "is_hot": false
+    },
+    "5": {
+      "total_usage": 13574,
+      "avg_usage": 135.74,
+      "usage_trend": [
+        128,
+        102,
+        163,
+        139,
+        145,
+        113,
+        118,
+        154,
+        120,
+        122,
+        127,
+        152,
+        130,
+        139,
+        122,
+        137,
+        190,
+        145,
+        112,
+        124,
+        97,
+        124,
+        145,
+        124,
+        110,
+        112,
+        120,
+        130,
+        150,
+        115,
+        130,
+        143,
+        163,
+        112,
+        149,
+        144,
+        127,
+        150,
+        142,
+        117,
+        153,
+        145,
+        185,
+        121,
+        140,
+        97,
+        143,
+        143,
+        144,
+        112,
+        127,
+        135,
+        107,
+        175,
+        173,
+        139,
+        157,
+        171,
+        135,
+        115,
+        120,
+        137,
+        135,
+        168,
+        133,
+        130,
+        115,
+        112,
+        148,
+        165,
+        97,
+        112,
+        154,
+        131,
+        149,
+        126,
+        134,
+        133,
+        145,
+        142,
+        155,
+        79,
+        125,
+        109,
+        160,
+        123,
+        153,
+        148,
+        165,
+        158,
+        172,
+        193,
+        181,
+        98,
+        117,
+        99,
+        161,
+        87,
+        181,
+        121
+      ],
+      "is_cold": true,
+      "is_hot": false
+    },
+    "6": {
+      "total_usage": 13815,
+      "avg_usage": 138.15,
+      "usage_trend": [
+        108,
+        141,
+        113,
+        134,
+        141,
+        119,
+        151,
+        161,
+        127,
+        139,
+        137,
+        141,
+        150,
+        135,
+        145,
+        135,
+        158,
+        134,
+        121,
+        140,
+        119,
+        139,
+        123,
+        146,
+        134,
+        117,
+        148,
+        134,
+        133,
+        118,
+        157,
+        140,
+        149,
+        140,
+        129,
+        142,
+        116,
+        119,
+        153,
+        140,
+        154,
+        151,
+        162,
+        127,
+        130,
+        126,
+        124,
+        160,
+        151,
+        138,
+        144,
+        141,
+        128,
+        131,
+        137,
+        115,
+        136,
+        152,
+        147,
+        138,
+        122,
+        134,
+        131,
+        146,
+        136,
+        133,
+        140,
+        125,
+        150,
+        146,
+        119,
+        150,
+        143,
+        140,
+        174,
+        155,
+        162,
+        142,
+        133,
+        148,
+        122,
+        115,
+        141,
+        131,
+        169,
+        162,
+        142,
+        124,
+        136,
+        148,
+        155,
+        151,
+        138,
+        123,
+        130,
+        134,
+        138,
+        134,
+        155,
+        120
+      ],
+      "is_cold": false,
+      "is_hot": true
+    },
+    "7": {
+      "total_usage": 13637,
+      "avg_usage": 136.37,
+      "usage_trend": [
+        126,
+        151,
+        163,
+        122,
+        132,
+        153,
+        145,
+        127,
+        153,
+        128,
+        141,
+        132,
+        157,
+        134,
+        147,
+        135,
+        126,
+        132,
+        148,
+        123,
+        131,
+        134,
+        121,
+        137,
+        137,
+        147,
+        149,
+        141,
+        128,
+        152,
+        150,
+        131,
+        107,
+        120,
+        151,
+        141,
+        150,
+        139,
+        127,
+        139,
+        126,
+        126,
+        122,
+        124,
+        128,
+        123,
+        137,
+        146,
+        135,
+        148,
+        137,
+        151,
+        109,
+        137,
+        125,
+        144,
+        131,
+        127,
+        152,
+        137,
+        138,
+        133,
+        147,
+        126,
+        129,
+        150,
+        147,
+        142,
+        129,
+        135,
+        155,
+        134,
+        149,
+        134,
+        129,
+        125,
+        135,
+        150,
+        154,
+        126,
+        133,
+        146,
+        144,
+        149,
+        127,
+        151,
+        133,
+        141,
+        135,
+        130,
+        124,
+        139,
+        125,
+        130,
+        131,
+        135,
+        128,
+        143,
+        115,
+        139
+      ],
+      "is_cold": false,
+      "is_hot": true
+    }
+  },
+  "time_series_data": [
+    {
+      "step": 0,
+      "timestamp": 1752104456.052021,
+      "total_energy": 863.0,
+      "thermal_imbalance": 0.54296875,
+      "routing_entropy": 0.6710588932037354,
+      "expert_diversity": 2.076150901115726,
+      "avg_temperature": 15.783502472653304,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 108,
+          "temperature": 54.33618115569529,
+          "energy_cost": 216.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 126,
+          "temperature": 71.93183862553114,
+          "energy_cost": 252.0
+        }
+      ]
+    },
+    {
+      "step": 1,
+      "timestamp": 1752104456.053287,
+      "total_energy": 950.0,
+      "thermal_imbalance": 0.4296875,
+      "routing_entropy": 0.6713224649429321,
+      "expert_diversity": 2.064199419911573,
+      "avg_temperature": 13.845849771141125,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 171,
+          "temperature": 0.0,
+          "energy_cost": 85.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 102,
+          "temperature": 0.0,
+          "energy_cost": 51.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 141,
+          "temperature": 54.87567680702242,
+          "energy_cost": 282.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 151,
+          "temperature": 55.89112136210659,
+          "energy_cost": 302.0
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "timestamp": 1752104456.054214,
+      "total_energy": 926.0,
+      "thermal_imbalance": 0.4609375,
+      "routing_entropy": 0.6709270477294922,
+      "expert_diversity": 2.064473904895641,
+      "avg_temperature": 14.72413955349948,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 139,
+          "temperature": 0.0,
+          "energy_cost": 69.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 163,
+          "temperature": 0.0,
+          "energy_cost": 81.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 113,
+          "temperature": 59.294437844897125,
+          "energy_cost": 226.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 163,
+          "temperature": 58.49867858309871,
+          "energy_cost": 326.0
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "timestamp": 1752104456.054993,
+      "total_energy": 896.0,
+      "thermal_imbalance": 0.5,
+      "routing_entropy": 0.6711287498474121,
+      "expert_diversity": 2.0739692242356638,
+      "avg_temperature": 14.515609609422437,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 152,
+          "temperature": 0.0,
+          "energy_cost": 76.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 139,
+          "temperature": 0.0,
+          "energy_cost": 69.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 63.96269860087049,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 122,
+          "temperature": 52.16217827450902,
+          "energy_cost": 244.0
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "timestamp": 1752104456.055926,
+      "total_energy": 921.5,
+      "thermal_imbalance": 0.466796875,
+      "routing_entropy": 0.6697808504104614,
+      "expert_diversity": 2.0753770005801067,
+      "avg_temperature": 14.18702286183691,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 141,
+          "temperature": 55.229831747157185,
+          "energy_cost": 282.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 132,
+          "temperature": 58.266351147538096,
+          "energy_cost": 264.0
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "timestamp": 1752104456.0565782,
+      "total_energy": 920.0,
+      "thermal_imbalance": 0.46875,
+      "routing_entropy": 0.6704192161560059,
+      "expert_diversity": 2.072442057418905,
+      "avg_temperature": 15.495590430325283,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 150,
+          "temperature": 0.0,
+          "energy_cost": 75.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 119,
+          "temperature": 60.96360689755276,
+          "energy_cost": 238.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 153,
+          "temperature": 63.00111654504951,
+          "energy_cost": 306.0
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "timestamp": 1752104456.0573308,
+      "total_energy": 956.0,
+      "thermal_imbalance": 0.421875,
+      "routing_entropy": 0.6696867942810059,
+      "expert_diversity": 2.0557572277930265,
+      "avg_temperature": 14.8243986918793,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 104,
+          "temperature": 0.0,
+          "energy_cost": 52.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 101,
+          "temperature": 0.0,
+          "energy_cost": 50.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 185,
+          "temperature": 0.0,
+          "energy_cost": 92.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 151,
+          "temperature": 67.02298291035908,
+          "energy_cost": 302.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 145,
+          "temperature": 51.57220662467531,
+          "energy_cost": 290.0
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "timestamp": 1752104456.058165,
+      "total_energy": 944.0,
+      "thermal_imbalance": 0.4375,
+      "routing_entropy": 0.6706383228302002,
+      "expert_diversity": 2.0666620394188495,
+      "avg_temperature": 15.270891842406343,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 94,
+          "temperature": 0.0,
+          "energy_cost": 47.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 154,
+          "temperature": 0.0,
+          "energy_cost": 77.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 161,
+          "temperature": 58.81049778839487,
+          "energy_cost": 322.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 127,
+          "temperature": 63.356636950855865,
+          "energy_cost": 254.0
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "timestamp": 1752104456.058916,
+      "total_energy": 932.0,
+      "thermal_imbalance": 0.453125,
+      "routing_entropy": 0.6676811575889587,
+      "expert_diversity": 2.0604334436969207,
+      "avg_temperature": 13.93233591833797,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 119,
+          "temperature": 0.0,
+          "energy_cost": 59.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 83,
+          "temperature": 0.0,
+          "energy_cost": 41.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 172,
+          "temperature": 0.0,
+          "energy_cost": 86.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 127,
+          "temperature": 50.87949840711258,
+          "energy_cost": 254.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 153,
+          "temperature": 60.57918893959117,
+          "energy_cost": 306.0
+        }
+      ]
+    },
+    {
+      "step": 9,
+      "timestamp": 1752104456.059726,
+      "total_energy": 912.5,
+      "thermal_imbalance": 0.478515625,
+      "routing_entropy": 0.6712689399719238,
+      "expert_diversity": 2.071036144190745,
+      "avg_temperature": 15.317118564223053,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 166,
+          "temperature": 0.0,
+          "energy_cost": 83.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 139,
+          "temperature": 61.00154806796909,
+          "energy_cost": 278.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 128,
+          "temperature": 61.535400445815334,
+          "energy_cost": 256.0
+        }
+      ]
+    },
+    {
+      "step": 10,
+      "timestamp": 1752104456.061323,
+      "total_energy": 929.0,
+      "thermal_imbalance": 0.45703125,
+      "routing_entropy": 0.6701846122741699,
+      "expert_diversity": 2.067416611659432,
+      "avg_temperature": 15.7844191060613,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 165,
+          "temperature": 0.0,
+          "energy_cost": 82.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 137,
+          "temperature": 62.35082863401948,
+          "energy_cost": 274.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 141,
+          "temperature": 63.924524214470914,
+          "energy_cost": 282.0
+        }
+      ]
+    },
+    {
+      "step": 11,
+      "timestamp": 1752104456.0625489,
+      "total_energy": 921.5,
+      "thermal_imbalance": 0.466796875,
+      "routing_entropy": 0.6693722605705261,
+      "expert_diversity": 2.064552128224805,
+      "avg_temperature": 15.644108038809186,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 85,
+          "temperature": 0.0,
+          "energy_cost": 42.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 142,
+          "temperature": 0.0,
+          "energy_cost": 71.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 147,
+          "temperature": 0.0,
+          "energy_cost": 73.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 152,
+          "temperature": 0.0,
+          "energy_cost": 76.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 141,
+          "temperature": 66.94228111137144,
+          "energy_cost": 282.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 132,
+          "temperature": 58.210583199102054,
+          "energy_cost": 264.0
+        }
+      ]
+    },
+    {
+      "step": 12,
+      "timestamp": 1752104456.063227,
+      "total_energy": 972.5,
+      "thermal_imbalance": 0.400390625,
+      "routing_entropy": 0.668458878993988,
+      "expert_diversity": 2.0657695828843696,
+      "avg_temperature": 14.79331503991163,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 87,
+          "temperature": 0.0,
+          "energy_cost": 43.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 150,
+          "temperature": 63.543196061165226,
+          "energy_cost": 300.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 157,
+          "temperature": 54.8033242581278,
+          "energy_cost": 314.0
+        }
+      ]
+    },
+    {
+      "step": 13,
+      "timestamp": 1752104456.063825,
+      "total_energy": 915.5,
+      "thermal_imbalance": 0.474609375,
+      "routing_entropy": 0.6712272763252258,
+      "expert_diversity": 2.06845840589235,
+      "avg_temperature": 13.13292278293402,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 102,
+          "temperature": 0.0,
+          "energy_cost": 51.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 158,
+          "temperature": 0.0,
+          "energy_cost": 79.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 139,
+          "temperature": 0.0,
+          "energy_cost": 69.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 135,
+          "temperature": 51.640579547424565,
+          "energy_cost": 270.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 134,
+          "temperature": 53.42280271604759,
+          "energy_cost": 268.0
+        }
+      ]
+    },
+    {
+      "step": 14,
+      "timestamp": 1752104456.0644422,
+      "total_energy": 950.0,
+      "thermal_imbalance": 0.4296875,
+      "routing_entropy": 0.6721699833869934,
+      "expert_diversity": 2.0746321574967572,
+      "avg_temperature": 16.155480156877935,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 145,
+          "temperature": 63.63448553200893,
+          "energy_cost": 290.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 147,
+          "temperature": 65.60935572301456,
+          "energy_cost": 294.0
+        }
+      ]
+    },
+    {
+      "step": 15,
+      "timestamp": 1752104456.064963,
+      "total_energy": 917.0,
+      "thermal_imbalance": 0.47265625,
+      "routing_entropy": 0.670246958732605,
+      "expert_diversity": 2.068914829394301,
+      "avg_temperature": 13.535730164052259,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 104,
+          "temperature": 0.0,
+          "energy_cost": 52.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 163,
+          "temperature": 0.0,
+          "energy_cost": 81.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 135,
+          "temperature": 55.115117973293934,
+          "energy_cost": 270.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 135,
+          "temperature": 53.17072333912414,
+          "energy_cost": 270.0
+        }
+      ]
+    },
+    {
+      "step": 16,
+      "timestamp": 1752104456.0656042,
+      "total_energy": 938.0,
+      "thermal_imbalance": 0.4453125,
+      "routing_entropy": 0.6699559092521667,
+      "expert_diversity": 2.05244298654984,
+      "avg_temperature": 14.552368372592706,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 85,
+          "temperature": 0.0,
+          "energy_cost": 42.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 190,
+          "temperature": 0.0,
+          "energy_cost": 95.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 158,
+          "temperature": 59.96768043821902,
+          "energy_cost": 316.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 126,
+          "temperature": 56.451266542522625,
+          "energy_cost": 252.0
+        }
+      ]
+    },
+    {
+      "step": 17,
+      "timestamp": 1752104456.066369,
+      "total_energy": 911.0,
+      "thermal_imbalance": 0.48046875,
+      "routing_entropy": 0.6720837354660034,
+      "expert_diversity": 2.073279677808977,
+      "avg_temperature": 14.033934225639113,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 101,
+          "temperature": 0.0,
+          "energy_cost": 50.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 136,
+          "temperature": 0.0,
+          "energy_cost": 68.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 57.49411426342289,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 132,
+          "temperature": 54.77735954169002,
+          "energy_cost": 264.0
+        }
+      ]
+    },
+    {
+      "step": 18,
+      "timestamp": 1752104456.067067,
+      "total_energy": 915.5,
+      "thermal_imbalance": 0.474609375,
+      "routing_entropy": 0.6676692962646484,
+      "expert_diversity": 2.0642189334649563,
+      "avg_temperature": 14.988777107694226,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 180,
+          "temperature": 0.0,
+          "energy_cost": 90.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 121,
+          "temperature": 52.8542217807892,
+          "energy_cost": 242.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 148,
+          "temperature": 67.0559950807646,
+          "energy_cost": 296.0
+        }
+      ]
+    },
+    {
+      "step": 19,
+      "timestamp": 1752104456.067816,
+      "total_energy": 906.5,
+      "thermal_imbalance": 0.486328125,
+      "routing_entropy": 0.6711626052856445,
+      "expert_diversity": 2.070722662073122,
+      "avg_temperature": 14.286685343956929,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 169,
+          "temperature": 0.0,
+          "energy_cost": 84.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 140,
+          "temperature": 55.66045145640433,
+          "energy_cost": 280.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 123,
+          "temperature": 58.63303129525111,
+          "energy_cost": 246.0
+        }
+      ]
+    },
+    {
+      "step": 20,
+      "timestamp": 1752104456.068686,
+      "total_energy": 887.0,
+      "thermal_imbalance": 0.51171875,
+      "routing_entropy": 0.6693122982978821,
+      "expert_diversity": 2.0712216106684975,
+      "avg_temperature": 15.402343564454199,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 159,
+          "temperature": 0.0,
+          "energy_cost": 79.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 119,
+          "temperature": 57.04122788003797,
+          "energy_cost": 238.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 131,
+          "temperature": 66.17752063559561,
+          "energy_cost": 262.0
+        }
+      ]
+    },
+    {
+      "step": 21,
+      "timestamp": 1752104456.069315,
+      "total_energy": 921.5,
+      "thermal_imbalance": 0.466796875,
+      "routing_entropy": 0.6695519685745239,
+      "expert_diversity": 2.0727023384088854,
+      "avg_temperature": 15.35862625348032,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 147,
+          "temperature": 0.0,
+          "energy_cost": 73.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 144,
+          "temperature": 0.0,
+          "energy_cost": 72.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 139,
+          "temperature": 57.81701149280651,
+          "energy_cost": 278.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 134,
+          "temperature": 65.05199853503605,
+          "energy_cost": 268.0
+        }
+      ]
+    },
+    {
+      "step": 22,
+      "timestamp": 1752104456.07003,
+      "total_energy": 878.0,
+      "thermal_imbalance": 0.5234375,
+      "routing_entropy": 0.6714873313903809,
+      "expert_diversity": 2.0715866566821752,
+      "avg_temperature": 14.805385550858354,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 158,
+          "temperature": 0.0,
+          "energy_cost": 79.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 123,
+          "temperature": 58.278051307575296,
+          "energy_cost": 246.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 121,
+          "temperature": 60.165033099291534,
+          "energy_cost": 242.0
+        }
+      ]
+    },
+    {
+      "step": 23,
+      "timestamp": 1752104456.07064,
+      "total_energy": 936.5,
+      "thermal_imbalance": 0.447265625,
+      "routing_entropy": 0.6711401343345642,
+      "expert_diversity": 2.067620205168747,
+      "avg_temperature": 14.542870772235677,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 92,
+          "temperature": 0.0,
+          "energy_cost": 46.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 159,
+          "temperature": 0.0,
+          "energy_cost": 79.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 146,
+          "temperature": 57.63990224437774,
+          "energy_cost": 292.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 137,
+          "temperature": 58.703063933507686,
+          "energy_cost": 274.0
+        }
+      ]
+    },
+    {
+      "step": 24,
+      "timestamp": 1752104456.071342,
+      "total_energy": 918.5,
+      "thermal_imbalance": 0.470703125,
+      "routing_entropy": 0.6705894470214844,
+      "expert_diversity": 2.075726106164233,
+      "avg_temperature": 17.355827832646543,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 129,
+          "temperature": 0.0,
+          "energy_cost": 64.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 129,
+          "temperature": 0.0,
+          "energy_cost": 64.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 73.03803576444436,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 137,
+          "temperature": 65.80858689672799,
+          "energy_cost": 274.0
+        }
+      ]
+    },
+    {
+      "step": 25,
+      "timestamp": 1752104456.0719712,
+      "total_energy": 908.0,
+      "thermal_imbalance": 0.484375,
+      "routing_entropy": 0.6680470108985901,
+      "expert_diversity": 2.0673661975296254,
+      "avg_temperature": 14.839286422629495,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 142,
+          "temperature": 0.0,
+          "energy_cost": 71.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 165,
+          "temperature": 0.0,
+          "energy_cost": 82.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 117,
+          "temperature": 65.22513150591466,
+          "energy_cost": 234.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 147,
+          "temperature": 53.4891598751213,
+          "energy_cost": 294.0
+        }
+      ]
+    },
+    {
+      "step": 26,
+      "timestamp": 1752104456.0727968,
+      "total_energy": 957.5,
+      "thermal_imbalance": 0.419921875,
+      "routing_entropy": 0.667831301689148,
+      "expert_diversity": 2.0701605814948487,
+      "avg_temperature": 16.052376249272967,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 95,
+          "temperature": 0.0,
+          "energy_cost": 47.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 148,
+          "temperature": 63.894155384905616,
+          "energy_cost": 296.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 149,
+          "temperature": 64.52485460927812,
+          "energy_cost": 298.0
+        }
+      ]
+    },
+    {
+      "step": 27,
+      "timestamp": 1752104456.073528,
+      "total_energy": 924.5,
+      "thermal_imbalance": 0.462890625,
+      "routing_entropy": 0.6717805862426758,
+      "expert_diversity": 2.0718218654641656,
+      "avg_temperature": 15.962198378733945,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 156,
+          "temperature": 0.0,
+          "energy_cost": 78.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 65.54664151930949,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 141,
+          "temperature": 62.150945510562075,
+          "energy_cost": 282.0
+        }
+      ]
+    },
+    {
+      "step": 28,
+      "timestamp": 1752104456.074242,
+      "total_energy": 903.5,
+      "thermal_imbalance": 0.490234375,
+      "routing_entropy": 0.6688315868377686,
+      "expert_diversity": 2.0701527109170472,
+      "avg_temperature": 14.418915044222388,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 136,
+          "temperature": 0.0,
+          "energy_cost": 68.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 151,
+          "temperature": 0.0,
+          "energy_cost": 75.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 150,
+          "temperature": 0.0,
+          "energy_cost": 75.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 133,
+          "temperature": 56.9227152944427,
+          "energy_cost": 266.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 128,
+          "temperature": 58.4286050593364,
+          "energy_cost": 256.0
+        }
+      ]
+    },
+    {
+      "step": 29,
+      "timestamp": 1752104456.075047,
+      "total_energy": 917.0,
+      "thermal_imbalance": 0.47265625,
+      "routing_entropy": 0.6703426837921143,
+      "expert_diversity": 2.067029750647898,
+      "avg_temperature": 16.10044765503813,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 119,
+          "temperature": 0.0,
+          "energy_cost": 59.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 173,
+          "temperature": 0.0,
+          "energy_cost": 86.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 118,
+          "temperature": 63.1013153926574,
+          "energy_cost": 236.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 152,
+          "temperature": 65.70226584764767,
+          "energy_cost": 304.0
+        }
+      ]
+    },
+    {
+      "step": 30,
+      "timestamp": 1752104456.075938,
+      "total_energy": 972.5,
+      "thermal_imbalance": 0.400390625,
+      "routing_entropy": 0.671235203742981,
+      "expert_diversity": 2.064609318887557,
+      "avg_temperature": 13.961360759042075,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 88,
+          "temperature": 0.0,
+          "energy_cost": 44.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 149,
+          "temperature": 0.0,
+          "energy_cost": 74.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 157,
+          "temperature": 54.379752687311296,
+          "energy_cost": 314.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 150,
+          "temperature": 57.3111333850253,
+          "energy_cost": 300.0
+        }
+      ]
+    },
+    {
+      "step": 31,
+      "timestamp": 1752104456.076735,
+      "total_energy": 918.5,
+      "thermal_imbalance": 0.470703125,
+      "routing_entropy": 0.6690608263015747,
+      "expert_diversity": 2.0645879522110464,
+      "avg_temperature": 14.549246961148018,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 92,
+          "temperature": 0.0,
+          "energy_cost": 46.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 170,
+          "temperature": 0.0,
+          "energy_cost": 85.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 143,
+          "temperature": 0.0,
+          "energy_cost": 71.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 140,
+          "temperature": 60.65525683303726,
+          "energy_cost": 280.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 131,
+          "temperature": 55.73871885614689,
+          "energy_cost": 262.0
+        }
+      ]
+    },
+    {
+      "step": 32,
+      "timestamp": 1752104456.077433,
+      "total_energy": 896.0,
+      "thermal_imbalance": 0.5,
+      "routing_entropy": 0.6698112487792969,
+      "expert_diversity": 2.0695433942390453,
+      "avg_temperature": 16.423080210196147,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 163,
+          "temperature": 0.0,
+          "energy_cost": 81.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 149,
+          "temperature": 69.45896023186442,
+          "energy_cost": 298.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 107,
+          "temperature": 61.92568144970474,
+          "energy_cost": 214.0
+        }
+      ]
+    },
+    {
+      "step": 33,
+      "timestamp": 1752104456.078145,
+      "total_energy": 902.0,
+      "thermal_imbalance": 0.4921875,
+      "routing_entropy": 0.6696845293045044,
+      "expert_diversity": 2.068566291125645,
+      "avg_temperature": 15.599100158083537,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 143,
+          "temperature": 0.0,
+          "energy_cost": 71.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 163,
+          "temperature": 0.0,
+          "energy_cost": 81.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 140,
+          "temperature": 59.3764031801199,
+          "energy_cost": 280.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 120,
+          "temperature": 65.41639808454839,
+          "energy_cost": 240.0
+        }
+      ]
+    },
+    {
+      "step": 34,
+      "timestamp": 1752104456.079218,
+      "total_energy": 932.0,
+      "thermal_imbalance": 0.453125,
+      "routing_entropy": 0.6681323051452637,
+      "expert_diversity": 2.0682586224001667,
+      "avg_temperature": 14.979935893637133,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 93,
+          "temperature": 0.0,
+          "energy_cost": 46.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 139,
+          "temperature": 0.0,
+          "energy_cost": 69.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 149,
+          "temperature": 0.0,
+          "energy_cost": 74.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 129,
+          "temperature": 62.02815346003524,
+          "energy_cost": 258.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 151,
+          "temperature": 57.81133368906182,
+          "energy_cost": 302.0
+        }
+      ]
+    },
+    {
+      "step": 35,
+      "timestamp": 1752104456.0797791,
+      "total_energy": 936.5,
+      "thermal_imbalance": 0.447265625,
+      "routing_entropy": 0.6704061031341553,
+      "expert_diversity": 2.07399217642852,
+      "avg_temperature": 15.45277104453367,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 144,
+          "temperature": 0.0,
+          "energy_cost": 72.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 142,
+          "temperature": 56.0525291497675,
+          "energy_cost": 284.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 141,
+          "temperature": 67.56963920650186,
+          "energy_cost": 282.0
+        }
+      ]
+    },
+    {
+      "step": 36,
+      "timestamp": 1752104456.080291,
+      "total_energy": 911.0,
+      "thermal_imbalance": 0.48046875,
+      "routing_entropy": 0.6671510934829712,
+      "expert_diversity": 2.0646017739845814,
+      "avg_temperature": 15.7553208697289,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 119,
+          "temperature": 0.0,
+          "energy_cost": 59.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 177,
+          "temperature": 0.0,
+          "energy_cost": 88.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 116,
+          "temperature": 59.242626803576286,
+          "energy_cost": 232.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 150,
+          "temperature": 66.79994015425491,
+          "energy_cost": 300.0
+        }
+      ]
+    },
+    {
+      "step": 37,
+      "timestamp": 1752104456.080826,
+      "total_energy": 899.0,
+      "thermal_imbalance": 0.49609375,
+      "routing_entropy": 0.6706459522247314,
+      "expert_diversity": 2.065057039590455,
+      "avg_temperature": 15.553964057066377,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 94,
+          "temperature": 0.0,
+          "energy_cost": 47.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 153,
+          "temperature": 0.0,
+          "energy_cost": 76.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 104,
+          "temperature": 0.0,
+          "energy_cost": 52.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 150,
+          "temperature": 0.0,
+          "energy_cost": 75.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 150,
+          "temperature": 0.0,
+          "energy_cost": 75.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 119,
+          "temperature": 67.09230391224676,
+          "energy_cost": 238.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 139,
+          "temperature": 57.33940854428426,
+          "energy_cost": 278.0
+        }
+      ]
+    },
+    {
+      "step": 38,
+      "timestamp": 1752104456.08146,
+      "total_energy": 932.0,
+      "thermal_imbalance": 0.453125,
+      "routing_entropy": 0.665881872177124,
+      "expert_diversity": 2.0566671709994506,
+      "avg_temperature": 14.425011818361758,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 79,
+          "temperature": 0.0,
+          "energy_cost": 39.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 169,
+          "temperature": 0.0,
+          "energy_cost": 84.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 142,
+          "temperature": 0.0,
+          "energy_cost": 71.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 153,
+          "temperature": 59.072821213899545,
+          "energy_cost": 306.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 127,
+          "temperature": 56.32727333299452,
+          "energy_cost": 254.0
+        }
+      ]
+    },
+    {
+      "step": 39,
+      "timestamp": 1752104456.082168,
+      "total_energy": 930.5,
+      "thermal_imbalance": 0.455078125,
+      "routing_entropy": 0.6687780618667603,
+      "expert_diversity": 2.0671356557424074,
+      "avg_temperature": 15.704158254973258,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 129,
+          "temperature": 0.0,
+          "energy_cost": 64.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 171,
+          "temperature": 0.0,
+          "energy_cost": 85.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 140,
+          "temperature": 60.457978641620976,
+          "energy_cost": 280.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 139,
+          "temperature": 65.1752873981651,
+          "energy_cost": 278.0
+        }
+      ]
+    },
+    {
+      "step": 40,
+      "timestamp": 1752104456.0830112,
+      "total_energy": 932.0,
+      "thermal_imbalance": 0.453125,
+      "routing_entropy": 0.6666526794433594,
+      "expert_diversity": 2.0608128179457905,
+      "avg_temperature": 14.042970201762234,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 136,
+          "temperature": 0.0,
+          "energy_cost": 68.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 78,
+          "temperature": 0.0,
+          "energy_cost": 39.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 143,
+          "temperature": 0.0,
+          "energy_cost": 71.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 153,
+          "temperature": 0.0,
+          "energy_cost": 76.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 154,
+          "temperature": 61.394677481103066,
+          "energy_cost": 308.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 126,
+          "temperature": 50.94908413299481,
+          "energy_cost": 252.0
+        }
+      ]
+    },
+    {
+      "step": 41,
+      "timestamp": 1752104456.0838048,
+      "total_energy": 927.5,
+      "thermal_imbalance": 0.458984375,
+      "routing_entropy": 0.6720072031021118,
+      "expert_diversity": 2.073356143633342,
+      "avg_temperature": 15.459852602743037,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 151,
+          "temperature": 62.66444946353515,
+          "energy_cost": 302.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 126,
+          "temperature": 61.01437135840916,
+          "energy_cost": 252.0
+        }
+      ]
+    },
+    {
+      "step": 42,
+      "timestamp": 1752104456.084516,
+      "total_energy": 938.0,
+      "thermal_imbalance": 0.4453125,
+      "routing_entropy": 0.6706226468086243,
+      "expert_diversity": 2.054327850812387,
+      "avg_temperature": 14.040878735673378,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 89,
+          "temperature": 0.0,
+          "energy_cost": 44.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 185,
+          "temperature": 0.0,
+          "energy_cost": 92.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 162,
+          "temperature": 57.855595091910565,
+          "energy_cost": 324.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 122,
+          "temperature": 54.47143479347646,
+          "energy_cost": 244.0
+        }
+      ]
+    },
+    {
+      "step": 43,
+      "timestamp": 1752104456.0852191,
+      "total_energy": 888.5,
+      "thermal_imbalance": 0.509765625,
+      "routing_entropy": 0.6696934700012207,
+      "expert_diversity": 2.0735065088035465,
+      "avg_temperature": 15.631907105695003,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 99,
+          "temperature": 0.0,
+          "energy_cost": 49.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 141,
+          "temperature": 0.0,
+          "energy_cost": 70.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 148,
+          "temperature": 0.0,
+          "energy_cost": 74.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 127,
+          "temperature": 58.732871613137306,
+          "energy_cost": 254.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 124,
+          "temperature": 66.32238523242272,
+          "energy_cost": 248.0
+        }
+      ]
+    },
+    {
+      "step": 44,
+      "timestamp": 1752104456.085938,
+      "total_energy": 899.0,
+      "thermal_imbalance": 0.49609375,
+      "routing_entropy": 0.6694530844688416,
+      "expert_diversity": 2.0744480483410213,
+      "avg_temperature": 15.488831493923715,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 130,
+          "temperature": 61.87629582002135,
+          "energy_cost": 260.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 128,
+          "temperature": 62.03435613136838,
+          "energy_cost": 256.0
+        }
+      ]
+    },
+    {
+      "step": 45,
+      "timestamp": 1752104456.086615,
+      "total_energy": 885.5,
+      "thermal_imbalance": 0.513671875,
+      "routing_entropy": 0.6724170446395874,
+      "expert_diversity": 2.0627775674068713,
+      "avg_temperature": 15.58990939643519,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 146,
+          "temperature": 0.0,
+          "energy_cost": 73.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 178,
+          "temperature": 0.0,
+          "energy_cost": 89.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 126,
+          "temperature": 61.351464478634085,
+          "energy_cost": 252.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 123,
+          "temperature": 63.36781069284742,
+          "energy_cost": 246.0
+        }
+      ]
+    },
+    {
+      "step": 46,
+      "timestamp": 1752104456.087279,
+      "total_energy": 903.5,
+      "thermal_imbalance": 0.490234375,
+      "routing_entropy": 0.6696032285690308,
+      "expert_diversity": 2.072783953009343,
+      "avg_temperature": 12.795420522320061,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 149,
+          "temperature": 0.0,
+          "energy_cost": 74.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 143,
+          "temperature": 0.0,
+          "energy_cost": 71.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 124,
+          "temperature": 50.47502769561712,
+          "energy_cost": 248.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 137,
+          "temperature": 51.88833648294337,
+          "energy_cost": 274.0
+        }
+      ]
+    },
+    {
+      "step": 47,
+      "timestamp": 1752104456.087957,
+      "total_energy": 971.0,
+      "thermal_imbalance": 0.40234375,
+      "routing_entropy": 0.6670979261398315,
+      "expert_diversity": 2.0568505548530402,
+      "avg_temperature": 14.254059576341401,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 148,
+          "temperature": 0.0,
+          "energy_cost": 74.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 73,
+          "temperature": 0.0,
+          "energy_cost": 36.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 143,
+          "temperature": 0.0,
+          "energy_cost": 71.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 160,
+          "temperature": 62.346898180982905,
+          "energy_cost": 320.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 146,
+          "temperature": 51.685578429748304,
+          "energy_cost": 292.0
+        }
+      ]
+    },
+    {
+      "step": 48,
+      "timestamp": 1752104456.088516,
+      "total_energy": 941.0,
+      "thermal_imbalance": 0.44140625,
+      "routing_entropy": 0.6705663204193115,
+      "expert_diversity": 2.0724861168931525,
+      "avg_temperature": 15.640064895899092,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 144,
+          "temperature": 0.0,
+          "energy_cost": 72.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 151,
+          "temperature": 62.55840678410019,
+          "energy_cost": 302.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 135,
+          "temperature": 62.56211238309255,
+          "energy_cost": 270.0
+        }
+      ]
+    },
+    {
+      "step": 49,
+      "timestamp": 1752104456.08912,
+      "total_energy": 941.0,
+      "thermal_imbalance": 0.44140625,
+      "routing_entropy": 0.668604850769043,
+      "expert_diversity": 2.0691062366723627,
+      "avg_temperature": 16.049730743485505,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 160,
+          "temperature": 0.0,
+          "energy_cost": 80.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 138,
+          "temperature": 61.483974527459246,
+          "energy_cost": 276.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 148,
+          "temperature": 66.91387142042478,
+          "energy_cost": 296.0
+        }
+      ]
+    },
+    {
+      "step": 50,
+      "timestamp": 1752104456.089804,
+      "total_energy": 933.5,
+      "thermal_imbalance": 0.451171875,
+      "routing_entropy": 0.6698790788650513,
+      "expert_diversity": 2.07032732089415,
+      "avg_temperature": 15.52714225067915,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 160,
+          "temperature": 0.0,
+          "energy_cost": 80.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 144,
+          "temperature": 59.676922926047226,
+          "energy_cost": 288.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 137,
+          "temperature": 64.54021507938597,
+          "energy_cost": 274.0
+        }
+      ]
+    },
+    {
+      "step": 51,
+      "timestamp": 1752104456.0905101,
+      "total_energy": 950.0,
+      "thermal_imbalance": 0.4296875,
+      "routing_entropy": 0.6716147065162659,
+      "expert_diversity": 2.0703884417173777,
+      "avg_temperature": 14.464774961904563,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 141,
+          "temperature": 55.66391951623477,
+          "energy_cost": 282.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 151,
+          "temperature": 60.05428017900173,
+          "energy_cost": 302.0
+        }
+      ]
+    },
+    {
+      "step": 52,
+      "timestamp": 1752104456.091338,
+      "total_energy": 867.5,
+      "thermal_imbalance": 0.537109375,
+      "routing_entropy": 0.6685131788253784,
+      "expert_diversity": 2.0528433152045933,
+      "avg_temperature": 15.141801039074743,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 87,
+          "temperature": 0.0,
+          "energy_cost": 43.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 149,
+          "temperature": 0.0,
+          "energy_cost": 74.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 193,
+          "temperature": 0.0,
+          "energy_cost": 96.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 107,
+          "temperature": 0.0,
+          "energy_cost": 53.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 128,
+          "temperature": 68.21628538302507,
+          "energy_cost": 256.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 109,
+          "temperature": 52.91812292957287,
+          "energy_cost": 218.0
+        }
+      ]
+    },
+    {
+      "step": 53,
+      "timestamp": 1752104456.092066,
+      "total_energy": 914.0,
+      "thermal_imbalance": 0.4765625,
+      "routing_entropy": 0.6696567535400391,
+      "expert_diversity": 2.0657001364701997,
+      "avg_temperature": 15.401578080565312,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 175,
+          "temperature": 0.0,
+          "energy_cost": 87.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 131,
+          "temperature": 58.05248866201355,
+          "energy_cost": 262.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 137,
+          "temperature": 65.16013598250893,
+          "energy_cost": 274.0
+        }
+      ]
+    },
+    {
+      "step": 54,
+      "timestamp": 1752104456.092682,
+      "total_energy": 905.0,
+      "thermal_imbalance": 0.48828125,
+      "routing_entropy": 0.670321524143219,
+      "expert_diversity": 2.066074295527155,
+      "avg_temperature": 13.926772920985222,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 99,
+          "temperature": 0.0,
+          "energy_cost": 49.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 173,
+          "temperature": 0.0,
+          "energy_cost": 86.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 137,
+          "temperature": 58.90769756121029,
+          "energy_cost": 274.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 125,
+          "temperature": 52.50648580667149,
+          "energy_cost": 250.0
+        }
+      ]
+    },
+    {
+      "step": 55,
+      "timestamp": 1752104456.093357,
+      "total_energy": 900.5,
+      "thermal_imbalance": 0.494140625,
+      "routing_entropy": 0.6731110215187073,
+      "expert_diversity": 2.0721952978315556,
+      "avg_temperature": 15.058717553634494,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 150,
+          "temperature": 0.0,
+          "energy_cost": 75.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 139,
+          "temperature": 0.0,
+          "energy_cost": 69.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 115,
+          "temperature": 63.392494456282314,
+          "energy_cost": 230.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 144,
+          "temperature": 57.077245972793634,
+          "energy_cost": 288.0
+        }
+      ]
+    },
+    {
+      "step": 56,
+      "timestamp": 1752104456.094053,
+      "total_energy": 912.5,
+      "thermal_imbalance": 0.478515625,
+      "routing_entropy": 0.6722711324691772,
+      "expert_diversity": 2.0712797229036823,
+      "avg_temperature": 15.685864609861504,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 157,
+          "temperature": 0.0,
+          "energy_cost": 78.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 136,
+          "temperature": 65.08771653648493,
+          "energy_cost": 272.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 131,
+          "temperature": 60.399200342407106,
+          "energy_cost": 262.0
+        }
+      ]
+    },
+    {
+      "step": 57,
+      "timestamp": 1752104456.094688,
+      "total_energy": 930.5,
+      "thermal_imbalance": 0.455078125,
+      "routing_entropy": 0.6691656708717346,
+      "expert_diversity": 2.0618312605228835,
+      "avg_temperature": 15.472672318118448,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 86,
+          "temperature": 0.0,
+          "energy_cost": 43.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 171,
+          "temperature": 0.0,
+          "energy_cost": 85.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 152,
+          "temperature": 63.52159478172214,
+          "energy_cost": 304.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 127,
+          "temperature": 60.25978376322544,
+          "energy_cost": 254.0
+        }
+      ]
+    },
+    {
+      "step": 58,
+      "timestamp": 1752104456.095296,
+      "total_energy": 960.5,
+      "thermal_imbalance": 0.416015625,
+      "routing_entropy": 0.6705034971237183,
+      "expert_diversity": 2.0721111319544843,
+      "avg_temperature": 14.718590531368953,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 104,
+          "temperature": 0.0,
+          "energy_cost": 52.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 147,
+          "temperature": 57.605982539225764,
+          "energy_cost": 294.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 152,
+          "temperature": 60.142741711725854,
+          "energy_cost": 304.0
+        }
+      ]
+    },
+    {
+      "step": 59,
+      "timestamp": 1752104456.095875,
+      "total_energy": 924.5,
+      "thermal_imbalance": 0.462890625,
+      "routing_entropy": 0.6690008044242859,
+      "expert_diversity": 2.055128332735653,
+      "avg_temperature": 14.35670424045286,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 101,
+          "temperature": 0.0,
+          "energy_cost": 50.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 197,
+          "temperature": 0.0,
+          "energy_cost": 98.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 138,
+          "temperature": 57.36876227595939,
+          "energy_cost": 276.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 137,
+          "temperature": 57.48487164766349,
+          "energy_cost": 274.0
+        }
+      ]
+    },
+    {
+      "step": 60,
+      "timestamp": 1752104456.096618,
+      "total_energy": 902.0,
+      "thermal_imbalance": 0.4921875,
+      "routing_entropy": 0.6709029674530029,
+      "expert_diversity": 2.0685886641607487,
+      "avg_temperature": 16.279115750109213,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 172,
+          "temperature": 0.0,
+          "energy_cost": 86.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 122,
+          "temperature": 70.14505131834385,
+          "energy_cost": 244.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 138,
+          "temperature": 60.08787468252986,
+          "energy_cost": 276.0
+        }
+      ]
+    },
+    {
+      "step": 61,
+      "timestamp": 1752104456.0974941,
+      "total_energy": 912.5,
+      "thermal_imbalance": 0.478515625,
+      "routing_entropy": 0.6685487031936646,
+      "expert_diversity": 2.0756009976490635,
+      "avg_temperature": 14.287787740310456,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 146,
+          "temperature": 0.0,
+          "energy_cost": 73.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 56.347064987512496,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 133,
+          "temperature": 57.95523693497116,
+          "energy_cost": 266.0
+        }
+      ]
+    },
+    {
+      "step": 62,
+      "timestamp": 1752104456.098297,
+      "total_energy": 929.0,
+      "thermal_imbalance": 0.45703125,
+      "routing_entropy": 0.66839599609375,
+      "expert_diversity": 2.0706290788863573,
+      "avg_temperature": 13.990005626702821,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 96,
+          "temperature": 0.0,
+          "energy_cost": 48.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 131,
+          "temperature": 59.30521252379084,
+          "energy_cost": 262.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 147,
+          "temperature": 52.61483248983173,
+          "energy_cost": 294.0
+        }
+      ]
+    },
+    {
+      "step": 63,
+      "timestamp": 1752104456.098937,
+      "total_energy": 920.0,
+      "thermal_imbalance": 0.46875,
+      "routing_entropy": 0.671205997467041,
+      "expert_diversity": 2.065744746599485,
+      "avg_temperature": 15.164554403894412,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 94,
+          "temperature": 0.0,
+          "energy_cost": 47.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 168,
+          "temperature": 0.0,
+          "energy_cost": 84.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 146,
+          "temperature": 61.362737622190515,
+          "energy_cost": 292.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 126,
+          "temperature": 59.95369760896478,
+          "energy_cost": 252.0
+        }
+      ]
+    },
+    {
+      "step": 64,
+      "timestamp": 1752104456.0995462,
+      "total_energy": 909.5,
+      "thermal_imbalance": 0.482421875,
+      "routing_entropy": 0.6705588102340698,
+      "expert_diversity": 2.070750705845386,
+      "avg_temperature": 14.831063253662883,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 99,
+          "temperature": 0.0,
+          "energy_cost": 49.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 162,
+          "temperature": 0.0,
+          "energy_cost": 81.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 136,
+          "temperature": 57.56660058206241,
+          "energy_cost": 272.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 129,
+          "temperature": 61.081905447240665,
+          "energy_cost": 258.0
+        }
+      ]
+    },
+    {
+      "step": 65,
+      "timestamp": 1752104456.100149,
+      "total_energy": 936.5,
+      "thermal_imbalance": 0.447265625,
+      "routing_entropy": 0.6719697713851929,
+      "expert_diversity": 2.063228743123477,
+      "avg_temperature": 15.401821504169487,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 93,
+          "temperature": 0.0,
+          "energy_cost": 46.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 173,
+          "temperature": 0.0,
+          "energy_cost": 86.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 133,
+          "temperature": 53.9596416332948,
+          "energy_cost": 266.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 150,
+          "temperature": 69.25493040006108,
+          "energy_cost": 300.0
+        }
+      ]
+    },
+    {
+      "step": 66,
+      "timestamp": 1752104456.1007118,
+      "total_energy": 942.5,
+      "thermal_imbalance": 0.439453125,
+      "routing_entropy": 0.6678257584571838,
+      "expert_diversity": 2.0598587577827754,
+      "avg_temperature": 15.4241305947113,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 179,
+          "temperature": 0.0,
+          "energy_cost": 89.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 140,
+          "temperature": 62.18227423739272,
+          "energy_cost": 280.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 147,
+          "temperature": 61.21077052029768,
+          "energy_cost": 294.0
+        }
+      ]
+    },
+    {
+      "step": 67,
+      "timestamp": 1752104456.101333,
+      "total_energy": 912.5,
+      "thermal_imbalance": 0.478515625,
+      "routing_entropy": 0.6720646619796753,
+      "expert_diversity": 2.0661675746877686,
+      "avg_temperature": 15.114035833304072,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 100,
+          "temperature": 0.0,
+          "energy_cost": 50.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 172,
+          "temperature": 0.0,
+          "energy_cost": 86.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 125,
+          "temperature": 61.42330506060855,
+          "energy_cost": 250.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 142,
+          "temperature": 59.48898160582402,
+          "energy_cost": 284.0
+        }
+      ]
+    },
+    {
+      "step": 68,
+      "timestamp": 1752104456.101996,
+      "total_energy": 930.5,
+      "thermal_imbalance": 0.455078125,
+      "routing_entropy": 0.6713101863861084,
+      "expert_diversity": 2.0716804812628276,
+      "avg_temperature": 15.946991190045068,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 148,
+          "temperature": 0.0,
+          "energy_cost": 74.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 150,
+          "temperature": 64.5675778122898,
+          "energy_cost": 300.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 129,
+          "temperature": 63.00835170807075,
+          "energy_cost": 258.0
+        }
+      ]
+    },
+    {
+      "step": 69,
+      "timestamp": 1752104456.102796,
+      "total_energy": 933.5,
+      "thermal_imbalance": 0.451171875,
+      "routing_entropy": 0.6715766191482544,
+      "expert_diversity": 2.061152664587988,
+      "avg_temperature": 16.65540983804123,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 87,
+          "temperature": 0.0,
+          "energy_cost": 43.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 96,
+          "temperature": 0.0,
+          "energy_cost": 48.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 165,
+          "temperature": 0.0,
+          "energy_cost": 82.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 146,
+          "temperature": 66.50909691164026,
+          "energy_cost": 292.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 135,
+          "temperature": 66.7341817926896,
+          "energy_cost": 270.0
+        }
+      ]
+    },
+    {
+      "step": 70,
+      "timestamp": 1752104456.103573,
+      "total_energy": 923.0,
+      "thermal_imbalance": 0.46484375,
+      "routing_entropy": 0.6681857109069824,
+      "expert_diversity": 2.0675288425841654,
+      "avg_temperature": 15.829238631628611,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 119,
+          "temperature": 0.0,
+          "energy_cost": 59.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 150,
+          "temperature": 0.0,
+          "energy_cost": 75.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 142,
+          "temperature": 0.0,
+          "energy_cost": 71.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 136,
+          "temperature": 0.0,
+          "energy_cost": 68.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 119,
+          "temperature": 63.01203560733455,
+          "energy_cost": 238.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 155,
+          "temperature": 63.621873445694334,
+          "energy_cost": 310.0
+        }
+      ]
+    },
+    {
+      "step": 71,
+      "timestamp": 1752104456.1043,
+      "total_energy": 938.0,
+      "thermal_imbalance": 0.4453125,
+      "routing_entropy": 0.6710642576217651,
+      "expert_diversity": 2.0676742889565722,
+      "avg_temperature": 14.585584680225871,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 169,
+          "temperature": 0.0,
+          "energy_cost": 84.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 150,
+          "temperature": 53.50819691287676,
+          "energy_cost": 300.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 134,
+          "temperature": 63.176480528930206,
+          "energy_cost": 268.0
+        }
+      ]
+    },
+    {
+      "step": 72,
+      "timestamp": 1752104456.105071,
+      "total_energy": 950.0,
+      "thermal_imbalance": 0.4296875,
+      "routing_entropy": 0.6678959131240845,
+      "expert_diversity": 2.067104076833976,
+      "avg_temperature": 14.315913277366,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 137,
+          "temperature": 0.0,
+          "energy_cost": 68.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 101,
+          "temperature": 0.0,
+          "energy_cost": 50.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 154,
+          "temperature": 0.0,
+          "energy_cost": 77.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 143,
+          "temperature": 55.33261838846388,
+          "energy_cost": 286.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 149,
+          "temperature": 59.19468783046412,
+          "energy_cost": 298.0
+        }
+      ]
+    },
+    {
+      "step": 73,
+      "timestamp": 1752104456.10575,
+      "total_energy": 923.0,
+      "thermal_imbalance": 0.46484375,
+      "routing_entropy": 0.6707192659378052,
+      "expert_diversity": 2.074835192469604,
+      "avg_temperature": 14.924243295333218,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 140,
+          "temperature": 55.690627884225776,
+          "energy_cost": 280.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 134,
+          "temperature": 63.70331847843997,
+          "energy_cost": 268.0
+        }
+      ]
+    },
+    {
+      "step": 74,
+      "timestamp": 1752104456.106538,
+      "total_energy": 966.5,
+      "thermal_imbalance": 0.408203125,
+      "routing_entropy": 0.6703860759735107,
+      "expert_diversity": 2.063780397835554,
+      "avg_temperature": 14.541572692986936,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 100,
+          "temperature": 0.0,
+          "energy_cost": 50.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 104,
+          "temperature": 0.0,
+          "energy_cost": 52.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 149,
+          "temperature": 0.0,
+          "energy_cost": 74.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 174,
+          "temperature": 56.65281588608029,
+          "energy_cost": 348.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 129,
+          "temperature": 59.67976565781519,
+          "energy_cost": 258.0
+        }
+      ]
+    },
+    {
+      "step": 75,
+      "timestamp": 1752104456.107114,
+      "total_energy": 932.0,
+      "thermal_imbalance": 0.453125,
+      "routing_entropy": 0.6686099171638489,
+      "expert_diversity": 2.0679948235970107,
+      "avg_temperature": 14.96320899142588,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 158,
+          "temperature": 0.0,
+          "energy_cost": 79.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 155,
+          "temperature": 62.591305068889035,
+          "energy_cost": 310.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 125,
+          "temperature": 57.114366862518,
+          "energy_cost": 250.0
+        }
+      ]
+    },
+    {
+      "step": 76,
+      "timestamp": 1752104456.10768,
+      "total_energy": 957.5,
+      "thermal_imbalance": 0.419921875,
+      "routing_entropy": 0.6707448959350586,
+      "expert_diversity": 2.071908809692619,
+      "avg_temperature": 16.73457058223824,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 129,
+          "temperature": 0.0,
+          "energy_cost": 64.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 114,
+          "temperature": 0.0,
+          "energy_cost": 57.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 162,
+          "temperature": 68.29343494279136,
+          "energy_cost": 324.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 135,
+          "temperature": 65.58312971511455,
+          "energy_cost": 270.0
+        }
+      ]
+    },
+    {
+      "step": 77,
+      "timestamp": 1752104456.108317,
+      "total_energy": 950.0,
+      "thermal_imbalance": 0.4296875,
+      "routing_entropy": 0.6725550293922424,
+      "expert_diversity": 2.0726024765029765,
+      "avg_temperature": 16.85282629656151,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 142,
+          "temperature": 0.0,
+          "energy_cost": 71.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 142,
+          "temperature": 66.4371890108363,
+          "energy_cost": 284.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 150,
+          "temperature": 68.38542136165576,
+          "energy_cost": 300.0
+        }
+      ]
+    },
+    {
+      "step": 78,
+      "timestamp": 1752104456.109175,
+      "total_energy": 942.5,
+      "thermal_imbalance": 0.439453125,
+      "routing_entropy": 0.6691244840621948,
+      "expert_diversity": 2.0726983941856956,
+      "avg_temperature": 15.270146709911774,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 104,
+          "temperature": 0.0,
+          "energy_cost": 52.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 133,
+          "temperature": 62.58372556820964,
+          "energy_cost": 266.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 154,
+          "temperature": 59.57744811108456,
+          "energy_cost": 308.0
+        }
+      ]
+    },
+    {
+      "step": 79,
+      "timestamp": 1752104456.11006,
+      "total_energy": 923.0,
+      "thermal_imbalance": 0.46484375,
+      "routing_entropy": 0.6716818809509277,
+      "expert_diversity": 2.0710087599913938,
+      "avg_temperature": 14.766751854287328,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 97,
+          "temperature": 0.0,
+          "energy_cost": 48.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 142,
+          "temperature": 0.0,
+          "energy_cost": 71.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 148,
+          "temperature": 55.26197146100147,
+          "energy_cost": 296.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 126,
+          "temperature": 62.872043373297146,
+          "energy_cost": 252.0
+        }
+      ]
+    },
+    {
+      "step": 80,
+      "timestamp": 1752104456.111051,
+      "total_energy": 894.5,
+      "thermal_imbalance": 0.501953125,
+      "routing_entropy": 0.6718789339065552,
+      "expert_diversity": 2.0749731969736103,
+      "avg_temperature": 14.466817378578096,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 126,
+          "temperature": 0.0,
+          "energy_cost": 63.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 135,
+          "temperature": 0.0,
+          "energy_cost": 67.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 155,
+          "temperature": 0.0,
+          "energy_cost": 77.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 122,
+          "temperature": 60.628667701691185,
+          "energy_cost": 244.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 133,
+          "temperature": 55.10587132693359,
+          "energy_cost": 266.0
+        }
+      ]
+    },
+    {
+      "step": 81,
+      "timestamp": 1752104456.111852,
+      "total_energy": 903.5,
+      "thermal_imbalance": 0.490234375,
+      "routing_entropy": 0.6727292537689209,
+      "expert_diversity": 2.045102948700708,
+      "avg_temperature": 15.95389171375699,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 134,
+          "temperature": 0.0,
+          "energy_cost": 67.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 205,
+          "temperature": 0.0,
+          "energy_cost": 102.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 79,
+          "temperature": 0.0,
+          "energy_cost": 39.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 115,
+          "temperature": 66.7205967096843,
+          "energy_cost": 230.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 146,
+          "temperature": 60.91053700037162,
+          "energy_cost": 292.0
+        }
+      ]
+    },
+    {
+      "step": 82,
+      "timestamp": 1752104456.112465,
+      "total_energy": 939.5,
+      "thermal_imbalance": 0.443359375,
+      "routing_entropy": 0.6726853251457214,
+      "expert_diversity": 2.067376049749362,
+      "avg_temperature": 14.72690293968625,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 136,
+          "temperature": 0.0,
+          "energy_cost": 68.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 94,
+          "temperature": 0.0,
+          "energy_cost": 47.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 159,
+          "temperature": 0.0,
+          "energy_cost": 79.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 141,
+          "temperature": 66.54432705343386,
+          "energy_cost": 282.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 144,
+          "temperature": 51.270896464056136,
+          "energy_cost": 288.0
+        }
+      ]
+    },
+    {
+      "step": 83,
+      "timestamp": 1752104456.113131,
+      "total_energy": 932.0,
+      "thermal_imbalance": 0.453125,
+      "routing_entropy": 0.6724531650543213,
+      "expert_diversity": 2.066826938836356,
+      "avg_temperature": 14.005146670857526,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 100,
+          "temperature": 0.0,
+          "energy_cost": 50.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 165,
+          "temperature": 0.0,
+          "energy_cost": 82.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 131,
+          "temperature": 54.29750671106336,
+          "energy_cost": 262.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 149,
+          "temperature": 57.743666655796844,
+          "energy_cost": 298.0
+        }
+      ]
+    },
+    {
+      "step": 84,
+      "timestamp": 1752104456.113765,
+      "total_energy": 956.0,
+      "thermal_imbalance": 0.421875,
+      "routing_entropy": 0.6687711477279663,
+      "expert_diversity": 2.0603511550965017,
+      "avg_temperature": 14.734668336198654,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 93,
+          "temperature": 0.0,
+          "energy_cost": 46.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 115,
+          "temperature": 0.0,
+          "energy_cost": 57.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 160,
+          "temperature": 0.0,
+          "energy_cost": 80.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 169,
+          "temperature": 56.18970634827405,
+          "energy_cost": 338.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 127,
+          "temperature": 61.68764034131518,
+          "energy_cost": 254.0
+        }
+      ]
+    },
+    {
+      "step": 85,
+      "timestamp": 1752104456.114497,
+      "total_energy": 981.5,
+      "thermal_imbalance": 0.388671875,
+      "routing_entropy": 0.6702004671096802,
+      "expert_diversity": 2.0616798820694675,
+      "avg_temperature": 15.927594715347356,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 87,
+          "temperature": 0.0,
+          "energy_cost": 43.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 106,
+          "temperature": 0.0,
+          "energy_cost": 53.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 152,
+          "temperature": 0.0,
+          "energy_cost": 76.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 123,
+          "temperature": 0.0,
+          "energy_cost": 61.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 162,
+          "temperature": 66.53288219743779,
+          "energy_cost": 324.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 151,
+          "temperature": 60.88787552534106,
+          "energy_cost": 302.0
+        }
+      ]
+    },
+    {
+      "step": 86,
+      "timestamp": 1752104456.115068,
+      "total_energy": 924.5,
+      "thermal_imbalance": 0.462890625,
+      "routing_entropy": 0.6710556745529175,
+      "expert_diversity": 2.0707410751787223,
+      "avg_temperature": 14.567052270419483,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 96,
+          "temperature": 0.0,
+          "energy_cost": 48.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 125,
+          "temperature": 0.0,
+          "energy_cost": 62.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 138,
+          "temperature": 0.0,
+          "energy_cost": 69.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 153,
+          "temperature": 0.0,
+          "energy_cost": 76.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 142,
+          "temperature": 54.160194524480005,
+          "energy_cost": 284.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 133,
+          "temperature": 62.37622363887586,
+          "energy_cost": 266.0
+        }
+      ]
+    },
+    {
+      "step": 87,
+      "timestamp": 1752104456.115791,
+      "total_energy": 909.5,
+      "thermal_imbalance": 0.482421875,
+      "routing_entropy": 0.6675950288772583,
+      "expert_diversity": 2.0742118537573853,
+      "avg_temperature": 14.697813477823292,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 109,
+          "temperature": 0.0,
+          "energy_cost": 54.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 141,
+          "temperature": 0.0,
+          "energy_cost": 70.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 148,
+          "temperature": 0.0,
+          "energy_cost": 74.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 124,
+          "temperature": 57.66459622626808,
+          "energy_cost": 248.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 141,
+          "temperature": 59.917911596318255,
+          "energy_cost": 282.0
+        }
+      ]
+    },
+    {
+      "step": 88,
+      "timestamp": 1752104456.116378,
+      "total_energy": 918.5,
+      "thermal_imbalance": 0.470703125,
+      "routing_entropy": 0.6719993352890015,
+      "expert_diversity": 2.065763403750811,
+      "avg_temperature": 15.776414168290735,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 116,
+          "temperature": 0.0,
+          "energy_cost": 58.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 93,
+          "temperature": 0.0,
+          "energy_cost": 46.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 148,
+          "temperature": 0.0,
+          "energy_cost": 74.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 165,
+          "temperature": 0.0,
+          "energy_cost": 82.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 136,
+          "temperature": 65.66610007423172,
+          "energy_cost": 272.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 135,
+          "temperature": 60.54521327209415,
+          "energy_cost": 270.0
+        }
+      ]
+    },
+    {
+      "step": 89,
+      "timestamp": 1752104456.117045,
+      "total_energy": 929.0,
+      "thermal_imbalance": 0.45703125,
+      "routing_entropy": 0.6717748641967773,
+      "expert_diversity": 2.06456018693276,
+      "avg_temperature": 16.6100040336406,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 87,
+          "temperature": 0.0,
+          "energy_cost": 43.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 148,
+          "temperature": 0.0,
+          "energy_cost": 74.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 158,
+          "temperature": 0.0,
+          "energy_cost": 79.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 148,
+          "temperature": 72.84229814146204,
+          "energy_cost": 296.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 130,
+          "temperature": 60.03773412766277,
+          "energy_cost": 260.0
+        }
+      ]
+    },
+    {
+      "step": 90,
+      "timestamp": 1752104456.1179469,
+      "total_energy": 930.5,
+      "thermal_imbalance": 0.455078125,
+      "routing_entropy": 0.6702293157577515,
+      "expert_diversity": 2.0609176137028484,
+      "avg_temperature": 16.322652773840055,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 102,
+          "temperature": 0.0,
+          "energy_cost": 51.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 172,
+          "temperature": 0.0,
+          "energy_cost": 86.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 155,
+          "temperature": 62.39812509647375,
+          "energy_cost": 310.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 124,
+          "temperature": 68.1830970942467,
+          "energy_cost": 248.0
+        }
+      ]
+    },
+    {
+      "step": 91,
+      "timestamp": 1752104456.118578,
+      "total_energy": 947.0,
+      "thermal_imbalance": 0.43359375,
+      "routing_entropy": 0.6685553193092346,
+      "expert_diversity": 2.0503986399701897,
+      "avg_temperature": 15.171458993316556,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 92,
+          "temperature": 0.0,
+          "energy_cost": 46.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 94,
+          "temperature": 0.0,
+          "energy_cost": 47.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 193,
+          "temperature": 0.0,
+          "energy_cost": 96.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 151,
+          "temperature": 64.3121094362731,
+          "energy_cost": 302.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 139,
+          "temperature": 57.05956251025935,
+          "energy_cost": 278.0
+        }
+      ]
+    },
+    {
+      "step": 92,
+      "timestamp": 1752104456.1196659,
+      "total_energy": 906.5,
+      "thermal_imbalance": 0.486328125,
+      "routing_entropy": 0.6704717874526978,
+      "expert_diversity": 2.061117077546733,
+      "avg_temperature": 15.251668532719613,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 102,
+          "temperature": 0.0,
+          "energy_cost": 51.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 99,
+          "temperature": 0.0,
+          "energy_cost": 49.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 140,
+          "temperature": 0.0,
+          "energy_cost": 70.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 181,
+          "temperature": 0.0,
+          "energy_cost": 90.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 138,
+          "temperature": 66.00734043861857,
+          "energy_cost": 276.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 125,
+          "temperature": 56.00600782313833,
+          "energy_cost": 250.0
+        }
+      ]
+    },
+    {
+      "step": 93,
+      "timestamp": 1752104456.120508,
+      "total_energy": 891.5,
+      "thermal_imbalance": 0.505859375,
+      "routing_entropy": 0.6653996706008911,
+      "expert_diversity": 2.0628315684362915,
+      "avg_temperature": 14.651489982840282,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 110,
+          "temperature": 0.0,
+          "energy_cost": 55.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 111,
+          "temperature": 0.0,
+          "energy_cost": 55.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 139,
+          "temperature": 0.0,
+          "energy_cost": 69.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 182,
+          "temperature": 0.0,
+          "energy_cost": 91.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 98,
+          "temperature": 0.0,
+          "energy_cost": 49.0
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 123,
+          "temperature": 54.068347940735435,
+          "energy_cost": 246.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 130,
+          "temperature": 63.14357192198682,
+          "energy_cost": 260.0
+        }
+      ]
+    },
+    {
+      "step": 94,
+      "timestamp": 1752104456.12129,
+      "total_energy": 903.5,
+      "thermal_imbalance": 0.490234375,
+      "routing_entropy": 0.6705189943313599,
+      "expert_diversity": 2.0724348915703503,
+      "avg_temperature": 14.06247647637273,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 131,
+          "temperature": 0.0,
+          "energy_cost": 65.5
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 130,
+          "temperature": 0.0,
+          "energy_cost": 65.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 100,
+          "temperature": 0.0,
+          "energy_cost": 50.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 158,
+          "temperature": 0.0,
+          "energy_cost": 79.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 117,
+          "temperature": 0.0,
+          "energy_cost": 58.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 130,
+          "temperature": 55.42498852420762,
+          "energy_cost": 260.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 131,
+          "temperature": 57.07482328677422,
+          "energy_cost": 262.0
+        }
+      ]
+    },
+    {
+      "step": 95,
+      "timestamp": 1752104456.122036,
+      "total_energy": 915.5,
+      "thermal_imbalance": 0.474609375,
+      "routing_entropy": 0.6682043075561523,
+      "expert_diversity": 2.0616137056130017,
+      "avg_temperature": 14.64515247139209,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 132,
+          "temperature": 0.0,
+          "energy_cost": 66.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 95,
+          "temperature": 0.0,
+          "energy_cost": 47.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 129,
+          "temperature": 0.0,
+          "energy_cost": 64.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 120,
+          "temperature": 0.0,
+          "energy_cost": 60.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 180,
+          "temperature": 0.0,
+          "energy_cost": 90.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 99,
+          "temperature": 0.0,
+          "energy_cost": 49.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 55.410583170666705,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 135,
+          "temperature": 61.75063660047001,
+          "energy_cost": 270.0
+        }
+      ]
+    },
+    {
+      "step": 96,
+      "timestamp": 1752104456.122686,
+      "total_energy": 911.0,
+      "thermal_imbalance": 0.48046875,
+      "routing_entropy": 0.6686807870864868,
+      "expert_diversity": 2.0679118097819567,
+      "avg_temperature": 14.057909257795355,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 122,
+          "temperature": 0.0,
+          "energy_cost": 61.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 93,
+          "temperature": 0.0,
+          "energy_cost": 46.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 113,
+          "temperature": 0.0,
+          "energy_cost": 56.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 124,
+          "temperature": 0.0,
+          "energy_cost": 62.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 145,
+          "temperature": 0.0,
+          "energy_cost": 72.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 161,
+          "temperature": 0.0,
+          "energy_cost": 80.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 138,
+          "temperature": 54.03687826667358,
+          "energy_cost": 276.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 128,
+          "temperature": 58.42639579568927,
+          "energy_cost": 256.0
+        }
+      ]
+    },
+    {
+      "step": 97,
+      "timestamp": 1752104456.123436,
+      "total_energy": 927.5,
+      "thermal_imbalance": 0.458984375,
+      "routing_entropy": 0.6700612306594849,
+      "expert_diversity": 2.0459650818859187,
+      "avg_temperature": 15.418784728840143,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 112,
+          "temperature": 0.0,
+          "energy_cost": 56.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 127,
+          "temperature": 0.0,
+          "energy_cost": 63.5
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 108,
+          "temperature": 0.0,
+          "energy_cost": 54.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 105,
+          "temperature": 0.0,
+          "energy_cost": 52.5
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 208,
+          "temperature": 0.0,
+          "energy_cost": 104.0
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 87,
+          "temperature": 0.0,
+          "energy_cost": 43.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 134,
+          "temperature": 60.958758718800745,
+          "energy_cost": 268.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 143,
+          "temperature": 62.391519111920395,
+          "energy_cost": 286.0
+        }
+      ]
+    },
+    {
+      "step": 98,
+      "timestamp": 1752104456.1240451,
+      "total_energy": 917.0,
+      "thermal_imbalance": 0.47265625,
+      "routing_entropy": 0.6682912707328796,
+      "expert_diversity": 2.058102789781373,
+      "avg_temperature": 15.296048562945154,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 94,
+          "temperature": 0.0,
+          "energy_cost": 47.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 118,
+          "temperature": 0.0,
+          "energy_cost": 59.0
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 100,
+          "temperature": 0.0,
+          "energy_cost": 50.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 133,
+          "temperature": 0.0,
+          "energy_cost": 66.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 181,
+          "temperature": 0.0,
+          "energy_cost": 90.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 155,
+          "temperature": 66.86389453068223,
+          "energy_cost": 310.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 115,
+          "temperature": 55.504493972879004,
+          "energy_cost": 230.0
+        }
+      ]
+    },
+    {
+      "step": 99,
+      "timestamp": 1752104456.124822,
+      "total_energy": 900.5,
+      "thermal_imbalance": 0.494140625,
+      "routing_entropy": 0.6693426966667175,
+      "expert_diversity": 2.0638267970119992,
+      "avg_temperature": 14.277656536056138,
+      "expert_usage": [
+        {
+          "expert_id": 0,
+          "usage_count": 96,
+          "temperature": 0.0,
+          "energy_cost": 48.0
+        },
+        {
+          "expert_id": 1,
+          "usage_count": 144,
+          "temperature": 0.0,
+          "energy_cost": 72.0
+        },
+        {
+          "expert_id": 2,
+          "usage_count": 103,
+          "temperature": 0.0,
+          "energy_cost": 51.5
+        },
+        {
+          "expert_id": 3,
+          "usage_count": 128,
+          "temperature": 0.0,
+          "energy_cost": 64.0
+        },
+        {
+          "expert_id": 4,
+          "usage_count": 173,
+          "temperature": 0.0,
+          "energy_cost": 86.5
+        },
+        {
+          "expert_id": 5,
+          "usage_count": 121,
+          "temperature": 0.0,
+          "energy_cost": 60.5
+        },
+        {
+          "expert_id": 6,
+          "usage_count": 120,
+          "temperature": 58.35414261281762,
+          "energy_cost": 240.0
+        },
+        {
+          "expert_id": 7,
+          "usage_count": 139,
+          "temperature": 55.86710967563148,
+          "energy_cost": 278.0
+        }
+      ]
+    }
+  ],
+  "timestamp": 1752104456.125272
+}

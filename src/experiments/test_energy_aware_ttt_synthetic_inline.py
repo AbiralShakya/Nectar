@@ -199,9 +199,9 @@ class EnergyAwareTTTSyntheticTester:
         avg_latency = total_latency / num_batches
         avg_power = total_power / num_batches
         avg_accuracy = total_accuracy / num_batches
-        avg_routing_entropy = np.mean(routing_entropies)
+        avg_routing_entropy = float(np.mean(routing_entropies))
         expert_usage_distribution = (expert_usage_counts / expert_usage_counts.sum()).tolist()
-        avg_thermal_imbalance = np.mean(thermal_imbalance_scores) if thermal_imbalance_scores else 0.0
+        avg_thermal_imbalance = float(np.mean(thermal_imbalance_scores)) if thermal_imbalance_scores else 0.0
         
         # Calculate improvements
         baseline_energy = self._get_baseline_energy()
@@ -349,14 +349,23 @@ class EnergyAwareTTTSyntheticTester:
     
     def _get_baseline_energy(self) -> float:
         """Get baseline energy consumption."""
-        # Estimate baseline energy without TTT optimization
+        # Estimate baseline energy using the same routing logic as actual energy
         batch_size = self.args.batch_size
         seq_length = self.args.seq_length
+        total_tokens = batch_size * seq_length
         
+        # Routing energy (same for baseline and actual)
         routing_cost = self.kernel_cost_model.get_cost("moe_router", batch_size)
-        expert_cost = self.kernel_cost_model.get_cost("ffn_gate", batch_size * seq_length)
+        routing_energy = routing_cost["energy_joules"]
         
-        return routing_cost["energy_joules"] + expert_cost["energy_joules"]
+        # Expert energy: only count tokens that are actually routed (top-k selection)
+        # With top-k=2 and num_experts=16, each token goes to 2/16 = 1/8 of experts
+        # So total expert tokens = total_tokens * top_k / num_experts
+        expert_tokens = total_tokens * self.args.moe_top_k / self.args.num_experts
+        expert_cost = self.kernel_cost_model.get_cost("ffn_gate", int(expert_tokens))
+        expert_energy = expert_cost["energy_joules"]
+        
+        return routing_energy + expert_energy
     
     def save_results(self, result: TTTTestResult, output_file: str):
         """Save test results to file."""

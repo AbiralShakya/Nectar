@@ -103,11 +103,18 @@ class EnergyAwareTTTRouter(SimpleTTTRouter):
         
         # Apply energy penalty with proper scaling and per-expert costs
         if self.last_estimated_energy > 0:
-            # Scale the energy penalty to make it meaningful
-            base_penalty = self.lambda_energy * self.energy_scale * float(self.last_estimated_energy)
+            # Create per-expert energy penalties based on their actual energy costs
+            # This is where we should penalize expensive experts more
+            expert_energy_costs = torch.ones(self.num_experts, device=x.device)
             
-            # Apply adaptive penalties based on usage patterns
-            expert_penalties = self._compute_adaptive_penalties(base_penalty)  # [num_experts]
+            # For now, make experts 0-3 expensive (10x more energy)
+            expensive_experts = [0, 1, 2, 3]
+            for i in expensive_experts:
+                expert_energy_costs[i] = 10.0
+            
+            # Scale the penalty based on each expert's energy cost
+            base_penalty = self.lambda_energy * self.energy_scale * float(self.last_estimated_energy)
+            expert_penalties = base_penalty * expert_energy_costs  # [num_experts]
             logits = logits - expert_penalties.unsqueeze(0)  # Broadcast to [N, num_experts]
             
             # Debug: print penalty magnitude
