@@ -204,7 +204,7 @@ class ParallelExpertPool:
                     results[expert_id] = expert_output
         
         return results
-
+    
 class GlobalLoadBalancer:
     """
     Global load balancer that considers energy consumption, thermal state,
@@ -788,6 +788,17 @@ class ParallelMoELayer(nn.Module):
             'num_devices': self.num_devices
         }
 
+# src/parallel_moe_system.py
+"""
+Updated Parallel Energy-Aware MoE System with Multi-GPU Support
+"""
+
+import torch
+import torch.distributed as dist
+import os
+from typing import List, Dict
+from src.monitor import GpuSystemMonitor
+
 # Utility functions for distributed training
 def setup_distributed(rank: int, world_size: int, backend: str = 'nccl'):
     """Setup distributed training"""
@@ -795,6 +806,7 @@ def setup_distributed(rank: int, world_size: int, backend: str = 'nccl'):
     os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group(backend, rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
+    print(f"Rank {rank}/{world_size} initialized on GPU {rank}")
 
 def cleanup_distributed():
     """Cleanup distributed training"""
@@ -813,3 +825,58 @@ def create_parallel_moe_system(config: ParallelMoEConfig) -> ParallelMoELayer:
     moe_layer = ParallelMoELayer(config, device_ids)
     
     return moe_layer
+
+def run_parallel_moe(rank: int, world_size: int, config: ParallelMoEConfig):
+    """Run the parallel MoE system on a single GPU"""
+    try:
+        # Setup distributed environment
+        setup_distributed(rank, world_size)
+
+        # Create the parallel MoE system
+        moe_layer = create_parallel_moe_system(config)
+        moe_layer = torch.nn.parallel.DistributedDataParallel(moe_layer, device_ids=[rank])
+
+        # Example: Forward pass with dummy data
+        batch_size = 32
+        seq_len = 128
+        input_dim = config.moe_config.d_model
+        dummy_input = torch.randn(batch_size, seq_len, input_dim).cuda(rank)
+
+        # Forward pass
+        output = moe_layer(dummy_input)
+        print(f"Rank {rank}: Output shape {output.shape}")
+
+    finally:
+        # Cleanup distributed environment
+        cleanup_distributed()
+
+if __name__ == "__main__":
+    import argparse
+    from src.moe_models import MoEConfig
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Run Parallel MoE System")
+    parser.add_argument("--world_size", type=int, default=4, help="Number of GPUs to use")
+    parser.add_argument("--d_model", type=int, default=512, help="Model dimension")
+    parser.add_argument("--num_experts", type=int, default=8, help="Number of experts")
+    args = parser.parse_args()
+
+    # Create the configuration
+    moe_config = MoEConfig(
+        d_model=args.d_model,
+        num_experts=args.num_experts,
+        top_k=2,
+        expert_type="swiglu"
+    )
+    config = ParallelMoEConfig(
+        moe_config=moe_config,
+        world_size=args.world_size
+    )
+
+    # Run the parallel MoE system
+    torch.multiprocessing.spawn(
+        run_parallel_moe,
+        args=(args.world_size, config),
+        nprocs=args.world_size,
+        join=True
+    )

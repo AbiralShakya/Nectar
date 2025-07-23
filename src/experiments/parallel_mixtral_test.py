@@ -641,5 +641,86 @@ def main():
     
     print("\n=== Parallel Testing Complete ===")
 
+# parallel_mixtral_test.py
+"""
+Updated Parallel Mixtral 7B Testing with Multi-GPU Support
+"""
+
+import torch
+import torch.distributed as dist
+import os
+from src.monitor import GpuSystemMonitor
+
+def setup_distributed(rank: int, world_size: int):
+    """Setup distributed training environment."""
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    torch.cuda.set_device(rank)
+    print(f"Process {rank}/{world_size} initialized on GPU {rank}")
+
+def cleanup_distributed():
+    """Cleanup distributed environment."""
+    dist.destroy_process_group()
+
+def run_parallel_test(rank: int, world_size: int, config: ParallelTestConfig, mixtral_config: MixtralConfig):
+    """Run parallel test on a single GPU."""
+    try:
+        setup_distributed(rank, world_size)
+
+        # Initialize tester
+        tester = ParallelMixtralTester(config, mixtral_config)
+
+        # Run tests
+        tester.run_parallel_test(rank, world_size)
+
+        # Save results on rank 0
+        if rank == 0:
+            tester.print_summary()
+            tester.save_results()
+
+    finally:
+        cleanup_distributed()
+
 if __name__ == "__main__":
-    main() 
+    import argparse
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Parallel Mixtral 7B Testing")
+    parser.add_argument("--num_gpus", type=int, default=4, help="Number of GPUs to use")
+    parser.add_argument("--batch_sizes", type=str, default="1,2,4,8,16", help="Comma-separated batch sizes")
+    parser.add_argument("--seq_lengths", type=str, default="64,128,256,512", help="Comma-separated sequence lengths")
+    parser.add_argument("--test_modes", type=str, default="decode,prefill", help="Comma-separated test modes")
+    parser.add_argument("--expert_strategy", type=str, default="load_balanced", help="Expert placement strategy")
+    parser.add_argument("--enable_thermal", action="store_true", help="Enable thermal awareness")
+    parser.add_argument("--enable_ttt", action="store_true", help="Enable TTT optimization")
+    args = parser.parse_args()
+
+    # Parse arguments
+    batch_sizes = [int(x) for x in args.batch_sizes.split(',')]
+    seq_lengths = [int(x) for x in args.seq_lengths.split(',')]
+    test_modes = args.test_modes.split(',')
+
+    # Configuration
+    config = ParallelTestConfig(
+        num_gpus=args.num_gpus,
+        batch_sizes=batch_sizes,
+        sequence_lengths=seq_lengths,
+        test_modes=test_modes,
+        expert_placement_strategy=args.expert_strategy,
+        enable_thermal_awareness=args.enable_thermal,
+        enable_ttt=args.enable_ttt
+    )
+    mixtral_config = MixtralConfig()
+
+    # Run parallel test
+    if config.num_gpus > 1:
+        torch.multiprocessing.spawn(
+            run_parallel_test,
+            args=(config.num_gpus, config, mixtral_config),
+            nprocs=config.num_gpus,
+            join=True
+        )
+    else:
+        # Single GPU test
+        run_parallel_test(0, 1, config, mixtral_config)
